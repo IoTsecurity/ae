@@ -39,7 +39,7 @@ int connect_to_asu(char * asu_IP_addr)
     //发送缓冲区
     int nSendBuf = 32*1024; //设置为32K
 
-
+	printf("local test");
 
     //设置一个socket地址结构client_addr,代表客户端internet地址, 端口
     bzero(&client_addr,sizeof(client_addr)); //把一段内存区的内容全部设置为0
