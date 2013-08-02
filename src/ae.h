@@ -230,7 +230,7 @@ typedef struct _auth_active
 	packet_head    wai_packet_head;                             /* WAI协议分组基本格式包头 */
     BYTE           flag;                                      /* 标志FLAG */
     BYTE           authidentify[RAND_LEN];                    /* 鉴别标识 */
-	BYTE		   aerandnum[RAND_LEN]; 
+	BYTE		   aechallenge[RAND_LEN]; 
 	identity       localasuidentity;                          /* 本地ASU的身份 */
 	ecdh_param     ecdhparam;                                 /* ECDH参数 */
     certificate    certificatestaae;                          /* STAae的证书 */
@@ -246,10 +246,10 @@ typedef struct _access_auth_requ
     BYTE             authidentify[RAND_LEN];                      /* 鉴别标识 */
     BYTE             asuechallenge[RAND_LEN];                     /* ASUE挑战 */
     byte_data        asuekeydata;                                 /* ASUE密钥数据 */
-    identity         staasueidentity;                             /* STAae的身份 */
-    certificate      certificatestaasue;                          /* STAasue证书 */
+	BYTE			 aechallenge[RAND_LEN];
+    identity         staaeidentity;                             /* STAae的身份 */
     ecdh_param       ecdhparam;                                   /* ECDH参数 */
-    identity_list    asuidentitylist;                             /* ASUE信任的ASU列表 */
+    certificate      certificatestaasue;                          /* STAasue证书 */
     sign_attribute   asuesign;                                    /* ASUE的签名 */
 }access_auth_requ;
 
@@ -277,20 +277,14 @@ typedef struct _certificate_auth_resp
 /* 接入鉴别响应 */
 typedef struct _access_auth_resp
 {
-	packet_head    wai_packet_head; 							/* WAI协议分组基本格式包头 */
+	packet_head 				 wai_packet_head; 				  /* WAI协议分组基本格式包头 */
     BYTE                         flag;                            /* 标识FLAG */
+	BYTE           				 authidentify[RAND_LEN];          /* 鉴别标识 */
     BYTE                         asuechallenge[RAND_LEN];         /* ASUE挑战 */
     BYTE                         aechallenge[RAND_LEN];           /* AE挑战 */
-    BYTE                         accessresult;                    /* 接入结果 */
-    byte_data                    asuekeydata;                     /* ASUE密钥数据 */
-    byte_data                    aekeydata;                       /* AE密钥数据 */
-    identity                     staaeidentity;                   /* STAae的身份 */
-    identity                     staasueidentity;                 /* STAasue的身份 */
-    
+	byte_data                    aekeydata;                       /* AE密钥数据 */
+	BYTE						 accessresult;					  /* 接入结果 */
     certificate_valid_result     cervalidresult;                  /* 证书验证结果 */
-    sign_attribute               asueassign;                      /* ASUE信任的服务器签名 */
-    sign_attribute               aeassign;                        /* AE信任的服务器签名 */
-
     sign_attribute               aesign;                          /* AE的签名 */
 }access_auth_resp;
 
