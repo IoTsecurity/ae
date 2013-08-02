@@ -133,8 +133,9 @@ EVP_PKEY * getprivkeyfromprivkeyfile(int userID)
 	}
 	printf("start read RSA private key\n");
 
+	rsa = RSA_new();
 	//if ((rsa = PEM_read_RSAPrivateKey(fp, &rsa, NULL, NULL)) == NULL)
-	if ((rsa = PEM_read_RSAPrivateKey(fp, NULL, NULL, NULL)) == NULL)
+	if ((rsa = PEM_read_RSAPrivateKey(fp, &rsa, NULL, NULL)) == NULL)
 	{
 		fprintf(stderr, "Unable to read private key parameters\n");
 		return NULL;
@@ -143,9 +144,9 @@ EVP_PKEY * getprivkeyfromprivkeyfile(int userID)
 	fclose(fp);
 
 	// print
-	printf("Content of Private key PEM file\n");
-	RSA_print_fp(stdout, rsa, 0);
-	printf("\n");
+	//printf("Content of Private key PEM file\n");
+	//RSA_print_fp(stdout, rsa, 0);
+	//printf("\n");
 
 	privKey = EVP_PKEY_new();
 	if (EVP_PKEY_set1_RSA(privKey, rsa) != 1) //保存RSA结构体到EVP_PKEY结构体
