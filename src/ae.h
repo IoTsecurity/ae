@@ -35,6 +35,7 @@
 *服务器端口定义
 *************************************************************/
 #define CHAT_SERVER_PORT    (6666)
+#define CHAT_LISTEN_PORT    (1111)
 
 
 #define MAC_LEN                  6           /* MAC地址长度 */

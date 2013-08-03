@@ -23,20 +23,81 @@
 #define CHK_ERR(err,s) if ((err)==-1) { perror(s); exit(1); }
 #define CHK_SSL(err) if ((err)==-1) { ERR_print_errors_fp(stderr); exit(2); }
 
-static int client_socket;
 
-int connect_to_asu(char * asu_IP_addr)
+static char *ASUE_ip_addr;
+static char *ASU_ip_addr;
+
+typedef struct user
 {
+    int user_ID;
+    int client_socket;
+    //client_socket==NOT_LOGIN,表示没有用户登录,
+    //client_socket==NOT_IN_USE,表示没有用户注册,
+}user;
 
-    struct sockaddr_in client_addr;
+//多线程共享user_table
+static user user_table[USER_AMOUNT_MAX];
+//访问user_table时要使用的信号量
+pthread_mutex_t user_table_mutex;
+
+void init_user_table()
+{
+    int i=0;
+    for(i=0;i<USER_AMOUNT_MAX;i++)
+    {
+        user_table[i].client_socket = NOT_IN_USE;
+        user_table[i].user_ID = 255;
+    }
+}
+
+int init_server_socket()
+{
     struct sockaddr_in server_addr;
-
-    socklen_t server_addr_length;
 
     // 接收缓冲区
     int nRecvBuf = 32*1024; //设置为32K
-
     //发送缓冲区
+    int nSendBuf = 32*1024; //设置为32K
+
+    bzero(&server_addr,sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(CHAT_LISTEN_PORT);
+
+    int server_socket = socket(AF_INET,SOCK_STREAM,0);
+
+    setsockopt(server_socket,SOL_SOCKET,SO_RCVBUF,(const BYTE *)&nRecvBuf,sizeof(int));
+    setsockopt(server_socket,SOL_SOCKET,SO_SNDBUF,(const BYTE *)&nSendBuf,sizeof(int));
+
+    if( server_socket < 0)
+    {
+        perror("socket error!");
+        exit(1);
+    }
+
+    if( bind(server_socket,(struct sockaddr*)&server_addr,sizeof(server_addr)))
+    {
+        perror("server bind error Failed!");
+        exit(1);
+    }
+
+    if ( listen(server_socket, 5) )
+    {
+        printf("Server Listen Failed!");
+        exit(1);
+    }
+    return server_socket;
+}
+
+
+int connect_to_asu()
+{
+	int client_socket;
+    struct sockaddr_in client_addr;
+    struct sockaddr_in server_addr;
+    socklen_t server_addr_length;
+
+    int nRecvBuf = 32*1024; //设置为32K
     int nSendBuf = 32*1024; //设置为32K
 
     //设置一个socket地址结构client_addr,代表客户端internet地址, 端口
@@ -45,30 +106,27 @@ int connect_to_asu(char * asu_IP_addr)
     client_addr.sin_addr.s_addr = htons(INADDR_ANY);//INADDR_ANY表示自动获取本机地址
     client_addr.sin_port = htons(0);    //0表示让系统自动分配一个空闲端口
     //创建用于internet的流协议(TCP)socket,用client_socket代表客户端socket
-    client_socket = socket(AF_INET,SOCK_STREAM,0);
-    if( client_socket < 0)
-    {
+
+    if( (client_socket = socket(AF_INET,SOCK_STREAM,0)) < 0){
         printf("Create Socket Failed!\n");
-        return FAIL;
+        return FALSE;
     }
     //把客户端的socket和客户端的socket地址结构联系起来
-    if( bind(client_socket,(struct sockaddr*)&client_addr,sizeof(client_addr)))
-    {
+    if( bind(client_socket,(struct sockaddr*)&client_addr,sizeof(client_addr))){
         printf("Client Bind Port Failed!\n");
-        return FAIL;
+        return FALSE;
     }
 
     //设置一个socket地址结构server_addr,代表服务器的internet地址, 端口
     bzero(&server_addr,sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    if(inet_aton(asu_IP_addr,&server_addr.sin_addr) == 0) //服务器的IP地址来自程序的参数
+    if(inet_aton(ASU_ip_addr,&server_addr.sin_addr) == 0) //服务器的IP地址来自程序的参数
     {
         printf("Server IP Address Error!\n");
-        return FAIL;
+        return FALSE;
     }
     server_addr.sin_port = htons(CHAT_SERVER_PORT);
     server_addr_length = sizeof(server_addr);
-
 
     setsockopt(client_socket,SOL_SOCKET,SO_RCVBUF,(const BYTE *)&nRecvBuf,sizeof(int));
     setsockopt(client_socket,SOL_SOCKET,SO_SNDBUF,(const BYTE *)&nSendBuf,sizeof(int));
@@ -76,11 +134,51 @@ int connect_to_asu(char * asu_IP_addr)
     //客户端向服务器发起连接,连接成功后client_socket代表了客户端和服务器的一个socket连接
     if(connect(client_socket,(struct sockaddr*)&server_addr, server_addr_length) < 0)
     {
-        printf("Can Not Connect To %s!\n",asu_IP_addr);
-        return FAIL;
+        printf("AE Can Not Connect To ASU %s!\n",ASU_ip_addr);
+        return FALSE;
     }
-    return SUCCEED;
+    return client_socket;
+	
 }
+
+int send_to_asue(int new_server_socket, BYTE *send_buffer, int send_len)
+{
+	bzero(send_buffer, send_len);
+	
+	int length = send(new_server_socket,send_buffer,send_len,0);
+	printf("---- send %d bytes -----\n",length);
+
+    if(length <0){
+        printf("Socket Send Data Failed Or Closed\n");
+        close(new_server_socket);
+        return FALSE;
+    }
+	else
+		return TRUE;
+}
+
+
+int recv_from_asue(int new_server_socket, BYTE *recv_buffer, int recv_len)
+{
+	bzero(recv_buffer, recv_len);
+
+	int length = recv(new_server_socket,recv_buffer, recv_len,0);
+	if (length < 0){
+		printf("Receive Data From Server Failed\n");
+		return FALSE;
+	}else if(length < recv_len){
+		printf("Receive data from server less than required.\n");
+		return FALSE;
+	}else if(length > recv_len){
+		printf("Receive data from server more than required.\n");
+		return FALSE;
+	}
+	else{
+		printf("receive data succeed, %d bytes.\n",length);
+		return TRUE;
+	}
+
+} 
 
 BOOL getCertData(int userID, BYTE buf[], int *len)
 {
@@ -131,16 +229,13 @@ EVP_PKEY * getprivkeyfromprivkeyfile(int userID)
 		fprintf(stderr, "Unable to open %s for RSA priv params\n", keyname);
 		return NULL;
 	}
-	printf("start read RSA private key\n");
 
 	rsa = RSA_new();
-	//if ((rsa = PEM_read_RSAPrivateKey(fp, &rsa, NULL, NULL)) == NULL)
 	if ((rsa = PEM_read_RSAPrivateKey(fp, &rsa, NULL, NULL)) == NULL)
 	{
 		fprintf(stderr, "Unable to read private key parameters\n");
 		return NULL;
 	}
-	printf("finish read RSA private key\n");
 	fclose(fp);
 
 	// print
@@ -206,7 +301,7 @@ int getLocalIdentity(identity *localIdentity, int localUserID)
 	BIO_free(b);
 	if(local_cert==NULL)
 	{
-		printf("open local cert failed.\n");
+		printf("open local CA cert failed.\n");
 		X509_free(local_cert);
 		return FALSE;
 	}
@@ -361,13 +456,11 @@ int fill_auth_active_packet(int user_ID,auth_active *auth_active_packet)
 	
 }
 
-int ProcessWAPIProtocolAuthActive()
+int ProcessWAPIProtocolAuthActive(int user_ID, auth_active *auth_active_packet)
 {
-	auth_active auth_active_packet;
-	int user_ID = 2;
-
-	memset((BYTE *)&auth_active_packet, 0, sizeof(auth_active_packet));
-	if (!fill_auth_active_packet(user_ID, &auth_active_packet)){
+	
+	memset((BYTE *)auth_active_packet, 0, sizeof(auth_active));
+	if (!fill_auth_active_packet(user_ID, auth_active_packet)){
 		printf("fill auth active packet failed!\n");
 	}
 
@@ -456,14 +549,11 @@ int fill_access_auth_requ_packet(int user_ID,access_auth_requ *access_auth_requ_
 	
 }
 
-int ProcessWAPIProtocolAccessAuthRequest()
+int ProcessWAPIProtocolAccessAuthRequest(int user_ID, access_auth_requ *access_auth_requ_packet)
 {
-	access_auth_requ access_auth_requ_packet;
-	int user_ID = 2;
-
 	
-	memset((BYTE *)&access_auth_requ_packet, 0, sizeof(access_auth_requ_packet));
-	if (!fill_access_auth_requ_packet(user_ID, &access_auth_requ_packet)){
+	memset((BYTE *)access_auth_requ_packet, 0, sizeof(access_auth_requ));
+	if (!fill_access_auth_requ_packet(user_ID, access_auth_requ_packet)){
 		printf("fill access auth request packet failed!\n");
 	}
 
@@ -544,7 +634,7 @@ int gen_certificate_auth_requ_packet(int user_ID,certificate_auth_requ * send_bu
 	return SUCCEED;
 }
 
-void ProcessWAPIProtocolCertAuthRequest()
+void ProcessWAPIProtocolCertAuthRequest(int client_socket)
 {
 	certificate_auth_requ cert_auth_requ_buffer_send;
 	int user_ID = 2;
@@ -567,7 +657,7 @@ void ProcessWAPIProtocolCertAuthRequest()
 }
 
 //4)
-int ProcessWAPIProtocolCertAuthResp()
+int ProcessWAPIProtocolCertAuthResp(int client_socket)
 {
 	certificate_auth_requ cert_auth_resp_buffer_recv;
 	bzero((BYTE *)&cert_auth_resp_buffer_recv,sizeof(cert_auth_resp_buffer_recv));
@@ -578,14 +668,15 @@ int ProcessWAPIProtocolCertAuthResp()
 	{
 		printf("Receive Data From Server Failed\n");
 	}
-
+	printf(" receive data from asu, %d bytes. \n", length);
+	
 	//客户端接收到服务器发来的【证书认证响应分组】后，按照协议规定来解析该数据包
 	return par_certificate_auth_resp_packet(&cert_auth_resp_buffer_recv);
 
 }
 
 //5 ProcessWAPIProtocolAccessAuthResp
-int fill_access_auth_resp_packet(access_auth_resp *access_auth_resp_packet, int user_ID)
+int fill_access_auth_resp_packet(int user_ID, access_auth_resp *access_auth_resp_packet)
 {
 	
 	//fill WAI packet head
@@ -646,60 +737,119 @@ int fill_access_auth_resp_packet(access_auth_resp *access_auth_resp_packet, int 
 	return TRUE;
 }
 
-int ProcessWAPIProtocolAccessAuthResp()
+int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_resp *access_auth_resp_packet)
 {
-	access_auth_resp access_auth_resp_packet;
-	int user_ID = 2;
-
-	memset((BYTE *)&access_auth_resp_packet, 0, sizeof(access_auth_resp_packet));
-	if (!fill_access_auth_resp_packet(&access_auth_resp_packet, user_ID)){
+	memset((BYTE *)access_auth_resp_packet, 0, sizeof(access_auth_resp));
+	if (!fill_access_auth_resp_packet(user_ID, access_auth_resp_packet)){
 		printf("fill access auth responce packet failed!\n");
 	}
 	
 	return TRUE;
 }
 
-void ProcessWAPIProtocol()
+void ProcessWAPIProtocol(int new_asue_socket)
 {
-	//1) ProcessWAPIProtocolAuthActive
-	printf("1) ProcessWAPIProtocolAuthActive: \n");
-	ProcessWAPIProtocolAuthActive();
+	int user_ID = 2;
+	int asu_socket;
+	auth_active auth_active_packet;
+	access_auth_requ access_auth_requ_packet;
+	access_auth_resp access_auth_resp_packet;
 	
-
+	//1) ProcessWAPIProtocolAuthActive
+	printf("***\n 1) ProcessWAPIProtocolAuthActive: \n");
+	ProcessWAPIProtocolAuthActive(user_ID, &auth_active_packet);
+	send_to_asue(new_asue_socket, (BYTE *)&auth_active_packet, sizeof(auth_active_packet));
+	
 	//2) ProcessWAPIProtocolAccessAuthRequest
-	printf("2) ProcessWAPIProtocolAccessAuthRequest: \n");
-	ProcessWAPIProtocolAccessAuthRequest();
+	printf("***\n 2) ProcessWAPIProtocolAccessAuthRequest: \n");
+	ProcessWAPIProtocolAccessAuthRequest(user_ID, &access_auth_requ_packet);
+	recv_from_asue(new_asue_socket, (BYTE *)&access_auth_requ_packet, sizeof(access_auth_requ_packet));
 
-
+	printf("connect to asu.\n");
+    asu_socket = connect_to_asu();
+	
 	//3) ProcessWAPIProtocolCertAuthRequest
-	printf("3) ProcessWAPIProtocolCertAuthRequest: \n");
-	//ProcessWAPIProtocolCertAuthRequest();
-
+	printf("***\n 3) ProcessWAPIProtocolCertAuthRequest: \n");
+	ProcessWAPIProtocolCertAuthRequest(asu_socket);
 	//4) ProcessWAPIProtocolCertAuthResp
-	printf("4) ProcessWAPIProtocolCertAuthResp: \n");
-	//recv_resp_from_server();
-	printf("客户端成功发送证书认证请求分组到服务器！\n");
+	printf("***\n 4) ProcessWAPIProtocolCertAuthResp: \n");
+	ProcessWAPIProtocolCertAuthResp(asu_socket);
 
-	//5 ProcessWAPIProtocolAccessAuthResp
-	printf("5) ProcessWAPIProtocolAccessAuthResp: \n");
-	ProcessWAPIProtocolAccessAuthResp();
+	//5) ProcessWAPIProtocolAccessAuthResp
+	printf("***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
+	ProcessWAPIProtocolAccessAuthResp(user_ID, &access_auth_resp_packet);
+	send_to_asue(new_asue_socket, (BYTE *)&access_auth_resp_packet, sizeof(access_auth_resp_packet));
 	
 }
 
+void * serve_each_asue(void * new_server_socket_to_client)
+{
+	int new_asue_socket = (int)new_server_socket_to_client;
+
+	printf("start serve asue...\n");
+	ProcessWAPIProtocol(new_asue_socket);
+	
+	close(new_asue_socket);
+
+	printf("pthread exit\n");
+	pthread_exit(NULL);
+
+}
+
+
+void listen_from_asue()
+{
+
+	int threadnum = 1;
+	init_user_table();
+	pthread_mutex_init(&user_table_mutex, NULL);
+	int server_socket = init_server_socket();
+
+	pthread_t child_thread;
+	pthread_attr_t child_thread_attr;
+	pthread_attr_init(&child_thread_attr);
+	pthread_attr_setdetachstate(&child_thread_attr, PTHREAD_CREATE_DETACHED);
+
+    if (pthread_attr_init(&child_thread_attr) != 0)
+    	perror("pthread_attr_init");
+
+	pthread_attr_setdetachstate(&child_thread_attr,PTHREAD_CREATE_DETACHED);
+	
+	//  accept connection from each ASUE
+	//while (1)
+	if(1)
+	{
+		struct sockaddr_in client_addr;
+		socklen_t length = sizeof(client_addr);
+
+		int new_asue_socket = accept(server_socket, (struct sockaddr*) &client_addr, &length);
+		if (new_asue_socket < 0){
+			perror("AE Accept Failed\n");
+			//break;
+		}
+
+		printf("going to create thread %d ...\n", threadnum);
+		//if (pthread_create(&child_thread, &child_thread_attr, serve_each_asue,(void *) new_asue_socket) < 0)
+		//	perror("pthread_create Failed");
+		serve_each_asue((void *)new_asue_socket);
+	}
+}
 int main(int argc, char **argv)
 {
 	OpenSSL_add_all_algorithms();
 
-    if (argc != 2)
+    if (argc != 3)
     {
-		printf("Usage: ./%s ServerIPAddress\n", argv[0]);
+		printf("Usage: %s ASUE_ip_addr ASU_ip_addr\n", argv[0]);
 		exit(1);
 	}
 
-    connect_to_asu(argv[1]);
-	//connect_to_asue(argv[1]);
-	
-    ProcessWAPIProtocol();
+	ASUE_ip_addr = argv[1];
+	ASU_ip_addr = argv[2];
+
+
+	printf("listen from asue.\n");
+	listen_from_asue();
 
 	return 0;
 
