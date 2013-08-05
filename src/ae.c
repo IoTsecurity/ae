@@ -787,6 +787,7 @@ void * serve_each_asue(void * new_server_socket_to_client)
 	int new_asue_socket = (int)new_server_socket_to_client;
 
 	printf("start serve asue...\n");
+	
 	ProcessWAPIProtocol(new_asue_socket);
 	
 	close(new_asue_socket);
@@ -814,10 +815,9 @@ void listen_from_asue()
     	perror("pthread_attr_init");
 
 	pthread_attr_setdetachstate(&child_thread_attr,PTHREAD_CREATE_DETACHED);
-	
+
 	//  accept connection from each ASUE
-	//while (1)
-	if(1)
+	while (1)
 	{
 		struct sockaddr_in client_addr;
 		socklen_t length = sizeof(client_addr);
@@ -829,11 +829,33 @@ void listen_from_asue()
 		}
 
 		printf("going to create thread %d ...\n", threadnum);
-		//if (pthread_create(&child_thread, &child_thread_attr, serve_each_asue,(void *) new_asue_socket) < 0)
-		//	perror("pthread_create Failed");
-		serve_each_asue((void *)new_asue_socket);
+		if (pthread_create(&child_thread, &child_thread_attr, serve_each_asue,(void *) new_asue_socket) < 0)
+		//if (pthread_create(&child_thread, NULL, serve_each_asue,(void *) new_asue_socket) < 0)
+			perror("pthread_create Failed");
+		//serve_each_asue((void *)new_asue_socket);
+
+		threadnum++;
+		//printf("sleeping for 2 sec ...\n");
+ 		//sleep(2);
 	}
 }
+/*
+static void * threadFunc(void *arg)
+{
+ void *res;
+ char *s = (char *) arg;
+ pthread_t t = pthread_self();
+ int relval = pthread_join(t, &res);
+
+ if (relval) 
+  perror("deadlock");
+ printf("%s", arg);
+
+  printf("return value is %d .....\n",relval);
+  //return (void *) strlen(s);
+  pthread_exit(&res);
+}
+*/
 int main(int argc, char **argv)
 {
 	OpenSSL_add_all_algorithms();
@@ -846,8 +868,21 @@ int main(int argc, char **argv)
 
 	ASUE_ip_addr = argv[1];
 	ASU_ip_addr = argv[2];
+/*
+	printf("test pthread\n");
+	
+	 pthread_t t1;
+	 void *res;
+	 int ret;
 
+	 ret = pthread_create(&t1, NULL, threadFunc, "Hello world\n");
+	 if (ret != 0)
+	    perror("pthread_create");
 
+	 printf("Message from main()\n");
+	 printf("res = %d\n",(int)res);
+	 
+*/
 	printf("listen from asue.\n");
 	listen_from_asue();
 
