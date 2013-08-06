@@ -466,7 +466,22 @@ int getLocalIdentity(identity *localIdentity, int localUserID)
 
 }
 
+/*************************************************
 
+Function:    // gen_sign
+Description: // 生成数字签名
+Calls:       // openssl生成签名的API
+Called By:   // fill_certificate_auth_resp_packet
+Input:	     //	input---待生成签名的整个数据包(分组)
+                sign_input_len---待生成签名的有效数据字段的长度，并非整个input长度
+                sign_value---保存生成的字段
+                sign_output_len---生成的签名字段的长度
+                privKey---生成签名所使用的私钥
+Output:      //	生成签名操作结果，TRUE or FALSE
+Return:      // TRUE or FALSE
+Others:      // 注意sign_input_len字段并非整个input长度，这一点今后如果感觉不合适再修改
+
+*************************************************/
 
 BOOL gen_sign(BYTE * input,int sign_input_len,BYTE * sign_value, unsigned int *sign_output_len,EVP_PKEY * privKey)
 {
