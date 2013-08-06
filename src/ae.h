@@ -89,6 +89,11 @@ typedef unsigned long  DWORD;
 #define TRUE 1
 #define FALSE 0
 
+#define AE_OK_ASUE_OK 2     //AE和ASUE证书验证都正确
+#define AE_OK_ASUE_ERROR 3  //AE证书验证正确，ASUE证书验证错误
+#define AE_ERROR_ASUE_OK 4  //AE证书验证错误，ASUE证书验证正确
+#define AE_ERROR_ASUE_ERROR 5  //AE证书验证错误，ASUE证书验证错误
+
 typedef struct _byte_data 
 {
 	BYTE  length;				     /* \u957f\u5ea6 */
@@ -223,9 +228,9 @@ typedef struct _ecdh_param
 
 
 /************************************************************
-*WAI认证协议于认证服务器直接相关的证书认证请求分组和证书认证响应分组
+*WAI认证协议相关的认证激活分组、接入认证请求分组、证书认证请求分组、证书认证响应分组、接入认证响应分组
 *************************************************************/
-/* 鉴别激活分组 */
+/* 认证激活分组 */
 typedef struct _auth_active
 {
 	packet_head    wai_packet_head;                             /* WAI协议分组基本格式包头 */
@@ -239,7 +244,7 @@ typedef struct _auth_active
     
 }auth_active;
 
-/* 接入鉴别请求 */
+/* 接入认证请求 */
 typedef struct _access_auth_requ
 {
 	packet_head    wai_packet_head;                             /* WAI协议分组基本格式包头 */
@@ -275,7 +280,7 @@ typedef struct _certificate_auth_resp
     sign_attribute             asusign;                           /* ASU服务器签名 */
 }certificate_auth_resp;
 
-/* 接入鉴别响应 */
+/* 接入认证响应 */
 typedef struct _access_auth_resp
 {
 	packet_head 				 wai_packet_head; 				  /* WAI协议分组基本格式包头 */

@@ -24,10 +24,9 @@
 #define CHK_SSL(err) if ((err)==-1) { ERR_print_errors_fp(stderr); exit(2); }
 
 
-static char *ASUE_ip_addr;
+//static char *ASUE_ip_addr;
 static char *ASU_ip_addr;
 
-static int asu_socket;
 
 typedef struct user
 {
@@ -143,10 +142,9 @@ int connect_to_asu()
 	
 }
 
-int send_to_asue(int new_server_socket, BYTE *send_buffer, int send_len)
+int send_to_peer(int new_server_socket, BYTE *send_buffer, int send_len)
 {
-	bzero(send_buffer, send_len);
-	
+
 	int length = send(new_server_socket,send_buffer,send_len,0);
 	printf("---- send %d bytes -----\n",length);
 
@@ -160,70 +158,30 @@ int send_to_asue(int new_server_socket, BYTE *send_buffer, int send_len)
 }
 
 
-int recv_from_asue(int new_server_socket, BYTE *recv_buffer, int recv_len)
+int recv_from_peer(int new_server_socket, BYTE *recv_buffer, int recv_len)
 {
-	bzero(recv_buffer, recv_len);
-
 	int length = recv(new_server_socket,recv_buffer, recv_len,0);
-	if (length < 0){
+	if (length < 0)
+	{
 		printf("Receive Data From Server Failed\n");
 		return FALSE;
-	}else if(length < recv_len){
+	}else if(length < recv_len)
+	{
 		printf("Receive data from server less than required.\n");
 		return FALSE;
-	}else if(length > recv_len){
+	}else if(length > recv_len)
+	{
 		printf("Receive data from server more than required.\n");
 		return FALSE;
 	}
-	else{
+	else
+	{
 		printf("receive data succeed, %d bytes.\n",length);
 		return TRUE;
 	}
 
 } 
 
-
-int send_to_asu(int asu_socket, BYTE *send_buffer, int send_len)
-{
-	int length = send(asu_socket,send_buffer,send_len,0);
-	printf("---- send %d bytes to asu-----\n",length);
-
-    if(length <0)
-    {
-        printf("Socket Send Data Failed Or Closed\n");
-        close(asu_socket);
-        return FALSE;
-    }
-	else
-		return TRUE;
-}
-
-int recv_from_asu(int asu_socket, BYTE *recv_buffer, int recv_len)
-{
-	bzero(recv_buffer, recv_len);
-
-	int length = recv(asu_socket,recv_buffer, recv_len,0);
-	if (length < 0)
-	{
-		printf("Receive Data From asu Failed\n");
-		return FALSE;
-	}
-	else if(length < recv_len)
-	{
-		printf("Receive data from asu less than required.\n");
-		return FALSE;
-	}
-	else if(length > recv_len)
-	{
-		printf("Receive data from asu more than required.\n");
-		return FALSE;
-	}
-	else
-	{
-		printf("receive data succeed, %d bytes.\n",length);
-		return TRUE;
-	}
-}
 
 BOOL getCertData(int userID, BYTE buf[], int *len)
 {
@@ -253,6 +211,36 @@ BOOL getCertData(int userID, BYTE buf[], int *len)
 
 	return TRUE;
 }
+
+BOOL writeCertFile(int userID, BYTE buf[], int len)
+{
+	FILE *fp;
+	char certname[40];
+	memset(certname, '\0', sizeof(certname));//初始化certname,以免后面写如乱码到文件中
+
+	if (userID == 0)
+		//sprintf(certname, "./demoCA/cacert.pem");//./demoCA/
+		sprintf(certname, "./cacert.pem");//./demoCA/
+	else
+		//sprintf(certname, "./demoCA/newcerts/usercert%d.pem", certnum);  //终端运行./client
+		sprintf(certname, "./usercert%d.pem", userID);                //eclipse调试或运行
+
+	printf("cert file name: %s\n", certname);
+
+	fp = fopen(certname, "w");
+	if (fp == NULL)
+	{
+		printf("open cert file failed!\n");
+		return FALSE;
+	}
+	int res = fwrite(buf, 1, len, fp);
+	printf("cert's length is %d\n", len);
+	fclose(fp);
+	printf("write cert complete!\n");
+
+	return TRUE;
+}
+
 
 EVP_PKEY * getprivkeyfromprivkeyfile(int userID)
 {
@@ -301,7 +289,102 @@ EVP_PKEY * getprivkeyfromprivkeyfile(int userID)
 	}
 }
 
+/*************************************************
 
+Function:    // getpubkeyfromcert
+Description: // 从数字证书(PEM文件)中读取公钥
+Calls:       // openssl中读PEM文件的API
+Called By:   // fill_certificate_auth_resp_packet
+Input:	     //	用户证书的用户名certnum
+Output:      //	数字证书公钥
+Return:      // EVP_PKEY *pubKey
+Others:      // 用户证书的用户名certnum最好是用字符串形式，但是目前是int值，有待改进
+
+*************************************************/
+EVP_PKEY *getpubkeyfromcert(int certnum)
+{
+	EVP_PKEY *pubKey;
+
+	BIO * key = NULL;
+	X509 * Cert = NULL; //X509证书结构体，保存CA证书
+	key = BIO_new(BIO_s_file());
+
+	char certname[60];
+	memset(certname, '\0', sizeof(certname)); //初始化certname,以免后面写如乱码到文件中
+	if (certnum == 0)
+		sprintf(certname, "./demoCA/cacert.pem"); //./demoCA/
+	else
+		sprintf(certname, "./demoCA/newcerts/usercert%d.pem", certnum);
+
+	BIO_read_filename(key,certname);
+	if (!PEM_read_bio_X509(key, &Cert, 0, NULL))
+	{
+		/* Error 读取证书失败！*/
+		printf("读取证书失败!\n");
+		return NULL;
+	}
+
+	pubKey = EVP_PKEY_new();
+	//获取证书公钥
+	pubKey = X509_get_pubkey(Cert);
+	return pubKey;
+}
+
+/*************************************************
+
+Function:    // verify_sign
+Description: // 验证数字签名
+Calls:       // openssl验证签名的API
+Called By:   // fill_certificate_auth_resp_packet
+Input:	     //	input---待验证签名的整个数据包
+                sign_input_len---待验证签名的有效数据字段的长度，并非整个input长度
+                sign_value---签名字段
+                sign_output_len---签名字段的长度
+                pubKey---验证签名所使用的公钥
+Output:      //	验证签名结果，TRUE or FALSE
+Return:      // TRUE or FALSE
+Others:      // 注意sign_input_len字段并非整个input长度，这一点今后如果感觉不合适再修改
+
+*************************************************/
+
+BOOL verify_sign(BYTE *input,int sign_input_len,BYTE * sign_value, unsigned int sign_output_len,EVP_PKEY * pubKey)
+{
+	EVP_MD_CTX mdctx;		 //摘要算法上下文变量
+
+	EVP_MD_CTX_init(&mdctx); //初始化摘要上下文
+
+	BYTE sign_input_buffer[10000];
+
+	memcpy(sign_input_buffer,input,sign_input_len);    //sign_inputLength为签名算法输入长度，为所传入分组的除签名字段外的所有字段
+
+	if (!EVP_VerifyInit_ex(&mdctx, EVP_md5(), NULL))	//验证初始化，设置摘要算法，一定要和签名一致。
+	{
+		printf("EVP_VerifyInit_ex err\n");
+//		EVP_PKEY_free(pubKey);//pubkey只是作为参数传进来，其清理内存留给其调用者完成，这一点与参考程序不同
+		return FALSE;
+	}
+
+	if (!EVP_VerifyUpdate(&mdctx, sign_input_buffer, sign_input_len))	//验证签名（摘要）Update
+	{
+		printf("err\n");
+//		EVP_PKEY_free(pubKey);//pubkey只是作为参数传进来，其清理内存留给其调用者完成，这一点与参考程序不同
+		return FALSE;
+	}
+
+	if (!EVP_VerifyFinal(&mdctx, sign_value,sign_output_len, pubKey))		//验证签名（摘要）Update
+	{
+		printf("EVP_Verify err\n");
+//		EVP_PKEY_free(pubKey);//pubkey只是作为参数传进来，其清理内存留给其调用者完成，这一点与参考程序不同
+		return FALSE;
+	} else
+	{
+		printf("验证签名正确!!!\n");
+	}
+	//释放内存
+//	EVP_PKEY_free(pubKey);//pubkey只是作为参数传进来，其清理内存留给其调用者完成，这一点与参考程序不同
+	EVP_MD_CTX_cleanup(&mdctx);
+	return TRUE;
+}
 int getECDHparam(ecdh_param *ecdhparam, const char *oid)
 {
 	unsigned char  *buf; 
@@ -335,18 +418,25 @@ int getLocalIdentity(identity *localIdentity, int localUserID)
 	int offset;
 	//\u5c06PEM\u683c\u5f0f\u7684\u8bc1\u4e66\u5b58\u4e3aX509\u8bc1\u4e66\u683c\u5f0f
 	char certname[40];
+	memset(certname, '\0', sizeof(certname));//初始化certname,以免后面写如乱码到文件中
+
+	if (localUserID == 0)
+		//sprintf(certname, "./demoCA/cacert.pem");//./demoCA/
+		sprintf(certname, "./cacert.pem");//./demoCA/
+	else
+		//sprintf(certname, "./demoCA/newcerts/usercert%d.pem", certnum);  //终端运行./client
+		sprintf(certname, "./usercert%d.pem", localUserID);                //eclipse调试或运行
+
+	printf("cert file name: %s\n", certname);
 
 	SSLeay_add_all_algorithms();   //\u52a0\u8f7d\u76f8\u5173\u7b97\u6cd5
-	memset(certname, '\0', sizeof(certname));//初始化certname,以免后面写如乱码到文件中
-	// ASU == ca ??
-	sprintf(certname, "./cacert.pem");//./demoCA/
-	
+
 	b=BIO_new_file(certname,"r");
 	local_cert=PEM_read_bio_X509(b,NULL,NULL,NULL);
 	BIO_free(b);
 	if(local_cert==NULL)
 	{
-		printf("open local CA cert failed.\n");
+		printf("open local cert failed.\n");
 		X509_free(local_cert);
 		return FALSE;
 	}
@@ -522,6 +612,7 @@ int ProcessWAPIProtocolAuthActive(int user_ID, auth_active *auth_active_packet)
 }
 
 //2) ProcessWAPIProtocolAccessAuthRequest
+/*
 int fill_access_auth_requ_packet(int user_ID,access_auth_requ *access_auth_requ_packet)
 {
 	//fill WAI packet head
@@ -529,7 +620,7 @@ int fill_access_auth_requ_packet(int user_ID,access_auth_requ *access_auth_requ_
 	access_auth_requ_packet->wai_packet_head.type = 1;
 	access_auth_requ_packet->wai_packet_head.subtype = AUTH_ACTIVE;
 	access_auth_requ_packet->wai_packet_head.reserved = 0;
-	access_auth_requ_packet->wai_packet_head.packetnumber = 1;
+	access_auth_requ_packet->wai_packet_head.packetnumber = 2;
 	access_auth_requ_packet->wai_packet_head.fragmentnumber = 0;
 	access_auth_requ_packet->wai_packet_head.identify = 0;
 
@@ -612,6 +703,44 @@ int ProcessWAPIProtocolAccessAuthRequest(int user_ID, access_auth_requ *access_a
 
 	return TRUE;
 }
+*/
+int HandleWAPIProtocolAccessAuthRequest(int user_ID, access_auth_requ *access_auth_requ_packet)
+{
+	//verify sign of ASUE
+	//...
+
+	//verify FLAG
+	if(access_auth_requ_packet->flag != 0x04){
+		printf("verify flag failed.\n");
+		return FALSE;
+	}
+
+	//verify auth identity
+	//...
+	
+	//verify AE identity
+	identity localaeidentity;
+	getLocalIdentity(&localaeidentity, user_ID);
+	
+	if( memcmp(access_auth_requ_packet->staaeidentity.cer_der.data, 
+		localaeidentity.cer_der.data, 
+		localaeidentity.identity_length) != 0){
+		printf("verify AE identity failed.\n");
+		printf("length:%d, %d\n", localaeidentity.identity_length, access_auth_requ_packet->staaeidentity.identity_length);
+		printf("data[:20]: %20s, %20s\n", localaeidentity.cer_der.data, access_auth_requ_packet->staaeidentity.cer_der.data);
+		return FALSE;
+	}else {
+		printf("verify AE identity succeed.\n");
+	}
+
+	//verify AE rand number
+	//...
+
+	return TRUE;
+}
+
+
+
 
 //3)
 
@@ -639,7 +768,7 @@ int fill_certificate_auth_requ_packet(int user_ID,certificate_auth_requ *certifi
 	BYTE cert_buffer[5000];
 	int cert_len = 0;
 
-	if (!getCertData(1, cert_buffer, &cert_len))    //先读取ASUE证书，"demoCA/newcerts/usercert1.pem",uesrID=1
+	if (!getCertData(1, cert_buffer, &cert_len))    //先读取ASUE证书，"usercert1.pem",uesrID=1
 	{
 		printf("将证书保存到缓存buffer失败!");
 		return FALSE;
@@ -653,8 +782,8 @@ int fill_certificate_auth_requ_packet(int user_ID,certificate_auth_requ *certifi
 	memset(cert_buffer,0,sizeof(cert_buffer));
 	cert_len = 0;
 
-	if (!getCertData(2, cert_buffer, &cert_len)) //先读取ASUE证书，"demoCA/newcerts/usercert1.pem",uesrID=1
-			{
+	if (!getCertData(2, cert_buffer, &cert_len)) //先读取ASUE证书，"usercert2.pem",uesrID=2
+	{
 		printf("将证书保存到缓存buffer失败!");
 		return FALSE;
 	}
@@ -677,7 +806,7 @@ int fill_certificate_auth_requ_packet(int user_ID,certificate_auth_requ *certifi
 		return FALSE;
 	}
 
-	if(!gen_sign((BYTE *)&certificate_auth_requ_packet,(certificate_auth_requ_packet->wai_packet_head.length-sizeof(certificate_auth_requ_packet->aesign)),sign_value, &sign_len,privKey))
+	if(!gen_sign((BYTE *)certificate_auth_requ_packet,(certificate_auth_requ_packet->wai_packet_head.length-sizeof(certificate_auth_requ_packet->aesign)),sign_value, &sign_len,privKey))
 	{
 		printf("generate signature failed.\n");
 		return FALSE;
@@ -691,64 +820,67 @@ int fill_certificate_auth_requ_packet(int user_ID,certificate_auth_requ *certifi
 }
 
 
-
-
 int ProcessWAPIProtocolCertAuthRequest(int user_ID,certificate_auth_requ *certificate_auth_requ_packet)
 {
 
 	memset((BYTE *)certificate_auth_requ_packet, 0, sizeof(certificate_auth_requ));
 	if (!fill_certificate_auth_requ_packet(user_ID,certificate_auth_requ_packet))
 	{
-		printf("fill certificate auth requ packet packet failed!\n");
+		printf("fill certificate auth requ packet failed!\n");
 	}
 
 	return TRUE;
 }
 
 
-
-//void ProcessWAPIProtocolCertAuthRequest(int client_socket)
-//{
-//	certificate_auth_requ cert_auth_requ_buffer_send;
-//	int user_ID = 2;
-//	bzero((BYTE *)&cert_auth_requ_buffer_send,sizeof(cert_auth_requ_buffer_send));
-//	//按照吕世超整理的认证协议中的【证书认证请求分组】来封装数据包
-//	gen_certificate_auth_requ_packet(user_ID,&cert_auth_requ_buffer_send);
-//
-//	//客户端向服务器发送【证书认证请求分组】
-//	int sendlen = send(client_socket,(BYTE *)&cert_auth_requ_buffer_send,sizeof(cert_auth_requ_buffer_send),0);
-//	printf("--------------------------------------------------客户端发送%d数据--------------------\n",sendlen);
-//
-//    if(sendlen <0)
-//    {
-//        printf("Socket Send Data Failed Or Closed\n");
-//        close(client_socket);
-//        exit(0);
-//    }
-////    else
-////    	return SUCCEED;
-//}
-
 //4)
-int ProcessWAPIProtocolCertAuthResp(int client_socket)
-{
-	certificate_auth_requ cert_auth_resp_buffer_recv;
-	bzero((BYTE *)&cert_auth_resp_buffer_recv,sizeof(cert_auth_resp_buffer_recv));
 
-	//客户端接收服务器发来的【证书认证响应分组】
-	int length = recv(client_socket,(BYTE *)&cert_auth_resp_buffer_recv,sizeof(cert_auth_resp_buffer_recv),0);
-	if (length < 0)
+int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet)
+{
+	//read ca certificate get ca pubkey(公钥)
+	EVP_PKEY *asupubKey = NULL;
+	BYTE *pTmp = NULL;
+	BYTE derasupubkey[1024];
+	int asupubkeyLen, i;
+	asupubKey = getpubkeyfromcert(0);
+
+	pTmp = derasupubkey;
+	//把证书公钥转换为DER编码的数据，以方便打印(aepubkey结构体不方便打印)
+	asupubkeyLen = i2d_PublicKey(asupubKey, &pTmp);
+	printf("asu's PublicKey is: \n");
+	for (i = 0; i < asupubkeyLen; i++)
 	{
-		printf("Receive Data From Server Failed\n");
+		printf("%02x", derasupubkey[i]);
 	}
-	printf(" receive data from asu, %d bytes. \n", length);
-	
-	//客户端接收到服务器发来的【证书认证响应分组】后，按照协议规定来解析该数据包
-	return par_certificate_auth_resp_packet(&cert_auth_resp_buffer_recv);
+	printf("\n");
+
+	//verify asu's sign
+	if (verify_sign((BYTE *) certificate_auth_resp_packet,
+			sizeof(certificate_auth_resp) - sizeof(sign_attribute),
+			certificate_auth_resp_packet->asusign.sign.data,
+			certificate_auth_resp_packet->asusign.sign.length, asupubKey))
+	{
+		printf("验证ASU签名正确......\n");
+		EVP_PKEY_free(asupubKey);
+	}
+
+	//read certificate_auth_resp_packet cervalidresult,and copy the access_auth_resp_packet cervalidresult
+	memcpy(&(access_auth_resp_packet->cervalidresult),&(certificate_auth_resp_packet->cervalidresult),sizeof(certificate_valid_result));
+	return TRUE;
 
 }
-//int ProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_resp *certificate_auth_resp_packet);//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
 
+
+int ProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet)//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
+{
+	memset((BYTE *)access_auth_resp_packet, 0, sizeof(access_auth_resp));
+	if (!HandleProcessWAPIProtocolCertAuthResp(user_ID,certificate_auth_resp_packet,access_auth_resp_packet))
+	{
+		printf("handle certificate auth resp packet failed!\n");
+	}
+
+	return TRUE;
+}
 
 //5 ProcessWAPIProtocolAccessAuthResp
 int fill_access_auth_resp_packet(int user_ID, access_auth_resp *access_auth_resp_packet)
@@ -759,7 +891,7 @@ int fill_access_auth_resp_packet(int user_ID, access_auth_resp *access_auth_resp
 	access_auth_resp_packet->wai_packet_head.type = 1;
 	access_auth_resp_packet->wai_packet_head.subtype = ACCESS_AUTH_RESP;
 	access_auth_resp_packet->wai_packet_head.reserved = 0;
-	access_auth_resp_packet->wai_packet_head.packetnumber = 1;
+	access_auth_resp_packet->wai_packet_head.packetnumber = 5;
 	access_auth_resp_packet->wai_packet_head.fragmentnumber = 0;
 	access_auth_resp_packet->wai_packet_head.identify = 0;
 
@@ -783,8 +915,10 @@ int fill_access_auth_resp_packet(int user_ID, access_auth_resp *access_auth_resp
 	access_auth_resp_packet->accessresult = 0; // access succeed
 
 	//fill certificate valid result
-	// !!!
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	//almost same type and content as certificate_auth_resp_packet, except addid segment
+
+	//access_auth_resp_packet->cervalidresult
 
 	//fill packet length
 	access_auth_resp_packet->wai_packet_head.length = sizeof(access_auth_resp); 
@@ -822,45 +956,58 @@ int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_resp *access_auth
 	return TRUE;
 }
 
-//void ProcessWAPIProtocol(int new_asue_socket)
-void ProcessWAPIProtocol()
+void ProcessWAPIProtocol(int new_asue_socket)
 {
 	int user_ID = 2;
 	int asu_socket;
 	auth_active auth_active_packet;
 	access_auth_requ access_auth_requ_packet;
-	access_auth_resp access_auth_resp_packet;
 	certificate_auth_requ certificate_auth_requ_packet;
 	certificate_auth_resp certificate_auth_resp_packet;
+	access_auth_resp access_auth_resp_packet;
 	
 
 	//1) ProcessWAPIProtocolAuthActive
-//	printf("***\n 1) ProcessWAPIProtocolAuthActive: \n");
-//	ProcessWAPIProtocolAuthActive(user_ID, &auth_active_packet);
-//	send_to_asue(new_asue_socket, (BYTE *)&auth_active_packet, sizeof(auth_active_packet));
-	
-	//2) ProcessWAPIProtocolAccessAuthRequest
-//	printf("***\n 2) ProcessWAPIProtocolAccessAuthRequest: \n");
-//	ProcessWAPIProtocolAccessAuthRequest(user_ID, &access_auth_requ_packet);
-//	recv_from_asue(new_asue_socket, (BYTE *)&access_auth_requ_packet, sizeof(access_auth_requ_packet));
+	printf("***\n 1) ProcessWAPIProtocolAuthActive: \n");
+	ProcessWAPIProtocolAuthActive(user_ID, &auth_active_packet);
+	printf("auth_active_packet:\n");
+	int i;
+	for(i=0; i<sizeof(auth_active_packet); i++)
+		printf("%x", ((BYTE *)&auth_active_packet)[i]);
+	printf("\n");
+	send_to_peer(new_asue_socket, (BYTE *)&auth_active_packet, sizeof(auth_active_packet));
 
+	//2) ProcessWAPIProtocolAccessAuthRequest
+	printf("***\n 2) HandleWAPIProtocolAccessAuthRequest: \n");
+	memset((BYTE *)&access_auth_requ_packet, 0, sizeof(access_auth_requ));
+	printf("recv auth active packet from ASUE...\n");
+	recv_from_peer(new_asue_socket, (BYTE *)&access_auth_requ_packet, sizeof(access_auth_requ_packet));
+
+
+	//verify access_auth_requ_packet
+	HandleWAPIProtocolAccessAuthRequest(user_ID, &access_auth_requ_packet);
+	
+	//3) ProcessWAPIProtocolCertAuthRequest
 	printf("connect to asu.\n");
     asu_socket = connect_to_asu();
 	
-	//3) ProcessWAPIProtocolCertAuthRequest
 	printf("***\n 3) ProcessWAPIProtocolCertAuthRequest: \n");
 	ProcessWAPIProtocolCertAuthRequest(user_ID, &certificate_auth_requ_packet);
-	send_to_asu(asu_socket,(BYTE *)&certificate_auth_requ_packet, sizeof(certificate_auth_requ_packet));
+	send_to_peer(asu_socket,(BYTE *)&certificate_auth_requ_packet, sizeof(certificate_auth_requ_packet));
 
 	//4) ProcessWAPIProtocolCertAuthResp
+
 	printf("***\n 4) ProcessWAPIProtocolCertAuthResp: \n");
-	recv_from_asu(asu_socket, (BYTE *)&certificate_auth_resp_packet, sizeof(certificate_auth_resp));
-	//ProcessWAPIProtocolCertAuthResp(user_ID, &certificate_auth_resp_packet);//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
+	printf("recv Cert Auth Resp packet from ASU...\n");
+	recv_from_peer(asu_socket, (BYTE *)&certificate_auth_resp_packet, sizeof(certificate_auth_resp));
+	ProcessWAPIProtocolCertAuthResp(user_ID, &certificate_auth_resp_packet,&access_auth_resp_packet);//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
+
+
 
 	//5) ProcessWAPIProtocolAccessAuthResp
-//	printf("***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
-//	ProcessWAPIProtocolAccessAuthResp(user_ID, &access_auth_resp_packet);
-//	send_to_asue(new_asue_socket, (BYTE *)&access_auth_resp_packet, sizeof(access_auth_resp_packet));
+	printf("***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
+	ProcessWAPIProtocolAccessAuthResp(user_ID, &access_auth_resp_packet);
+	send_to_peer(new_asue_socket, (BYTE *)&access_auth_resp_packet, sizeof(access_auth_resp_packet));
 	
 }
 
@@ -942,14 +1089,14 @@ int main(int argc, char **argv)
 {
 	OpenSSL_add_all_algorithms();
 
-//    if (argc != 3)
-//    {
-//		printf("Usage: %s ASUE_ip_addr ASU_ip_addr\n", argv[0]);
-//		exit(1);
-//	}
+    if (argc != 2)
+    {
+		printf("Usage: %s ASU_ip_addr\n", argv[0]);
+		exit(1);
+	}
 
-//	ASUE_ip_addr = argv[1];
 	ASU_ip_addr = argv[1];
+
 /*
 	printf("test pthread\n");
 	
@@ -965,10 +1112,8 @@ int main(int argc, char **argv)
 	 printf("res = %d\n",(int)res);
 	 
 */
-//	printf("listen from asue.\n");
-//	listen_from_asue();
-
-	ProcessWAPIProtocol();
+	printf("listen from asue.\n");
+	listen_from_asue();
 
 	return 0;
 
