@@ -1036,14 +1036,9 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	certificate_auth_resp certificate_auth_resp_packet;
 	access_auth_resp access_auth_resp_packet;
 	
-
 	//1) ProcessWAPIProtocolAuthActive
 	printf("***\n 1) ProcessWAPIProtocolAuthActive: \n");
 	ProcessWAPIProtocolAuthActive(user_ID, &auth_active_packet);
-	//int i;
-	//for(i=0; i<sizeof(auth_active_packet); i++)
-	//	printf("%x", ((BYTE *)&auth_active_packet)[i]);
-	//printf("\n");
 	send_to_peer(new_asue_socket, (BYTE *)&auth_active_packet, sizeof(auth_active_packet));
 
 	//2) ProcessWAPIProtocolAccessAuthRequest
