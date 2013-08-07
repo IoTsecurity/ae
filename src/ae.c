@@ -936,7 +936,7 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, access_auth_requ *access_au
 
 //3)
 
-int fill_certificate_auth_requ_packet(int user_ID,certificate_auth_requ *certificate_auth_requ_packet)
+int fill_certificate_auth_requ_packet(int user_ID,access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet)
 {
 	//fill WAI packet head
 	certificate_auth_requ_packet->wai_packet_head.version = 1;
@@ -949,33 +949,25 @@ int fill_certificate_auth_requ_packet(int user_ID,certificate_auth_requ *certifi
 	certificate_auth_requ_packet->wai_packet_head.identify = 0;
 
 	//fill addid
-	memset((BYTE *)&certificate_auth_requ_packet->addid.mac1,0,sizeof(certificate_auth_requ_packet->addid.mac1));
-	memset((BYTE *)&certificate_auth_requ_packet->addid.mac2,0,sizeof(certificate_auth_requ_packet->addid.mac2));
+	memset((BYTE *)&(certificate_auth_requ_packet->addid.mac1),0,sizeof(certificate_auth_requ_packet->addid.mac1));
+	memset((BYTE *)&(certificate_auth_requ_packet->addid.mac2),0,sizeof(certificate_auth_requ_packet->addid.mac2));
 
 	//fill ae and asue rand number
-	memset((BYTE *)&certificate_auth_requ_packet->aechallenge, 0, sizeof(certificate_auth_requ_packet->aechallenge));
-	memset((BYTE *)&certificate_auth_requ_packet->asuechallenge, 0, sizeof(certificate_auth_requ_packet->asuechallenge));
+	gen_randnum((BYTE *)&(certificate_auth_requ_packet->aechallenge),32);
+	memcpy((BYTE *)&(certificate_auth_requ_packet->asuechallenge), (BYTE *)&(access_auth_requ_packet->asuechallenge), sizeof(certificate_auth_requ_packet->asuechallenge));
 
 	//fill asue certificate
 
-	BYTE cert_buffer[5000];
-	int cert_len = 0;
-
-	if (!getCertData(1, cert_buffer, &cert_len))    //先读取ASUE证书，"usercert1.pem",uesrID=1
-	{
-		printf("将证书保存到缓存buffer失败!");
-		return FALSE;
-	}
-
-	certificate_auth_requ_packet->staasuecer.cer_length = cert_len;   //证书长度字段
-	memcpy((certificate_auth_requ_packet->staasuecer.cer_X509),cert_buffer,cert_len);
+	memcpy(&(certificate_auth_requ_packet->staasuecer),&(access_auth_requ_packet->certificatestaasue),sizeof(certificate));
 
 	//fill ae certificate
+	BYTE cert_buffer[5000];
+	int cert_len = 0;
 
 	memset(cert_buffer,0,sizeof(cert_buffer));
 	cert_len = 0;
 
-	if (!getCertData(2, cert_buffer, &cert_len)) //先读取ASUE证书，"usercert2.pem",uesrID=2
+	if (!getCertData(2, cert_buffer, &cert_len)) //读取AE证书，"usercert2.pem",uesrID=2
 	{
 		printf("将证书保存到缓存buffer失败!");
 		return FALSE;
@@ -1010,11 +1002,11 @@ int fill_certificate_auth_requ_packet(int user_ID,certificate_auth_requ *certifi
 }
 
 
-int ProcessWAPIProtocolCertAuthRequest(int user_ID,certificate_auth_requ *certificate_auth_requ_packet)
+int ProcessWAPIProtocolCertAuthRequest(int user_ID,access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet)
 {
 
 	memset((BYTE *)certificate_auth_requ_packet, 0, sizeof(certificate_auth_requ));
-	if (!fill_certificate_auth_requ_packet(user_ID,certificate_auth_requ_packet))
+	if (!fill_certificate_auth_requ_packet(user_ID,access_auth_requ_packet,certificate_auth_requ_packet))
 	{
 		printf("fill certificate auth requ packet failed!\n");
 	}
@@ -1200,13 +1192,13 @@ void ProcessWAPIProtocol(int new_asue_socket)
 
 	//verify access_auth_requ_packet
 	HandleWAPIProtocolAccessAuthRequest(user_ID, &access_auth_requ_packet);
-	
+
 	//3) ProcessWAPIProtocolCertAuthRequest
 	printf("connect to asu.\n");
     asu_socket = connect_to_asu();
-	
+
 	printf("***\n 3) ProcessWAPIProtocolCertAuthRequest: \n");
-	ProcessWAPIProtocolCertAuthRequest(user_ID, &certificate_auth_requ_packet);
+	ProcessWAPIProtocolCertAuthRequest(user_ID, &access_auth_requ_packet,&certificate_auth_requ_packet);
 	send_to_peer(asu_socket,(BYTE *)&certificate_auth_requ_packet, sizeof(certificate_auth_requ_packet));
 
 	//4) ProcessWAPIProtocolCertAuthResp
