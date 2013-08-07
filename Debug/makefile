@@ -29,7 +29,7 @@ all: ae
 ae: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -L/usr/local/openssl/lib -o "ae" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L/usr/local/openssl/lib -Xlinker -R/usr/local/lib -Xlinker -ldl -o "ae" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -38,7 +38,8 @@ src/ae.d src/ae.o: ../src/ae.c ../src/ae.h \
  /usr/local/openssl/include/openssl/dtls1.h \
  /usr/local/openssl/include/openssl/pqueue.h \
  /usr/local/openssl/include/openssl/ssl23.h \
- /usr/local/openssl/include/openssl/err.h
+ /usr/local/openssl/include/openssl/err.h \
+ /usr/local/openssl/include/openssl/rand.h
 
 ../src/ae.h:
 
@@ -121,3 +122,5 @@ src/ae.d src/ae.o: ../src/ae.c ../src/ae.h \
 /usr/local/openssl/include/openssl/ssl23.h:
 
 /usr/local/openssl/include/openssl/err.h:
+
+/usr/local/openssl/include/openssl/rand.h:
