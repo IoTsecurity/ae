@@ -9,8 +9,6 @@
  */
 #include "ae.h"
 
-
-
 ///* define HOME to be dir for key and cert files... */
 //#define HOME "./"
 ///* Make these what you want for cert & key files */
@@ -24,10 +22,8 @@
 #define CHK_ERR(err,s) if ((err)==-1) { perror(s); exit(1); }
 #define CHK_SSL(err) if ((err)==-1) { ERR_print_errors_fp(stderr); exit(2); }
 
-
 //static char *ASUE_ip_addr;
 static char *ASU_ip_addr;
-
 
 typedef struct user
 {
@@ -688,17 +684,18 @@ int fill_auth_active_packet(int user_ID,auth_active *auth_active_packet)
 	printf("fill flag:\n");
 	auth_active_packet->flag = 0x00;
 
-	//fill auth identify, rand number !!!
-	printf("fill auth identify, unfinished!!!\n");
-	memset((BYTE *)&auth_active_packet->authidentify, 0, sizeof(auth_active_packet->authidentify));
+	//fill auth identify, first time random number
+	printf("fill auth identify:\n");
+	gen_randnum((BYTE *)&auth_active_packet->authidentify, sizeof(auth_active_packet->authidentify));
 
-	//fill ae rand number !!!
-	printf("fill ae rand number, unfinished!!!\n");
-	memset((BYTE *)&auth_active_packet->aechallenge, 0, sizeof(auth_active_packet->aechallenge));
+	//fill ae rand number 
+	printf("fill ae rand number:\n");
+	gen_randnum((BYTE *)&auth_active_packet->aechallenge, sizeof(auth_active_packet->aechallenge));
 
-	//fill local ASU identity ???
-	printf("fill local ASU identity, confused???\n");
-	getLocalIdentity(&auth_active_packet->localasuidentity, user_ID);
+	//fill local ASU identity
+	printf("fill local ASU identity:\n");
+	int asu_ID = 0;
+	getLocalIdentity(&auth_active_packet->localasuidentity, asu_ID);
 
 	//fill ecdh param
 	printf("fill ecdh param:\n");
@@ -754,8 +751,6 @@ int fill_auth_active_packet(int user_ID,auth_active *auth_active_packet)
 
 int ProcessWAPIProtocolAuthActive(int user_ID, auth_active *auth_active_packet)
 {
-	
-	memset((BYTE *)auth_active_packet, 0, sizeof(auth_active));
 	if (!fill_auth_active_packet(user_ID, auth_active_packet)){
 		printf("fill auth active packet failed!\n");
 	}
@@ -857,7 +852,7 @@ int ProcessWAPIProtocolAccessAuthRequest(int user_ID, access_auth_requ *access_a
 	return TRUE;
 }
 */
-int HandleWAPIProtocolAccessAuthRequest(int user_ID, access_auth_requ *access_auth_requ_packet)
+int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_packet, access_auth_requ *access_auth_requ_packet)
 {
 	
 	//write asue cert into cert file
@@ -905,8 +900,11 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, access_auth_requ *access_au
 	}
 
 	//verify auth identity, is same auth active packet
-	//...
-	printf("verify auth identity, unfinished!!!\n");
+	printf("verify auth identity:\n");
+	if(memcmp(access_auth_requ_packet->authidentify, 
+		auth_active_packet->authidentify, 
+		sizeof(access_auth_requ_packet->authidentify)) != 0)
+		printf("verify auth identity failed!\n");
 	
 	//verify AE identity
 	printf("verify AE identity, unfinished!!!\n");
@@ -925,8 +923,12 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, access_auth_requ *access_au
 	}
 
 	//verify AE rand number, is same auth active packet
-	//...
-	printf("verify AE rand number, unfinished!!!\n");
+	printf("verify AE rand number:\n");
+	if(memcmp(access_auth_requ_packet->aechallenge, 
+		auth_active_packet->aechallenge, 
+		sizeof(access_auth_requ_packet->aechallenge)) != 0)
+		printf("verify AE rand number failed!\n");
+	
 
 	return TRUE;
 }
@@ -1004,13 +1006,11 @@ int fill_certificate_auth_requ_packet(int user_ID,access_auth_requ *access_auth_
 
 int ProcessWAPIProtocolCertAuthRequest(int user_ID,access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet)
 {
-
 	memset((BYTE *)certificate_auth_requ_packet, 0, sizeof(certificate_auth_requ));
 	if (!fill_certificate_auth_requ_packet(user_ID,access_auth_requ_packet,certificate_auth_requ_packet))
 	{
 		printf("fill certificate auth requ packet failed!\n");
 	}
-
 	return TRUE;
 }
 
@@ -1065,6 +1065,7 @@ int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_resp *ce
 
 	//读取证书认证响应分组中的ASU服务器对证书验证结果字段的签名字段，将该字段拷贝到接入认证响应分组中的复合证书验证结果的签名字段中
 	memcpy(&(access_auth_resp_packet->cervalrescomplex.ae_asue_cert_valid_result_asu_sign),&(certificate_auth_resp_packet->cervalresasusign),sizeof(certificate_valid_result));
+
 	return TRUE;
 
 }
@@ -1082,7 +1083,7 @@ int ProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_resp *certific
 }
 
 //5 ProcessWAPIProtocolAccessAuthResp
-int fill_access_auth_resp_packet(int user_ID, access_auth_resp *access_auth_resp_packet)
+int fill_access_auth_resp_packet(int user_ID, access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet)
 {
 	
 	//fill WAI packet head
@@ -1095,35 +1096,35 @@ int fill_access_auth_resp_packet(int user_ID, access_auth_resp *access_auth_resp
 	access_auth_resp_packet->wai_packet_head.fragmentnumber = 0;
 	access_auth_resp_packet->wai_packet_head.identify = 0;
 
-	//fill flag
+	//fill flag, same as access auth requ packet
 	printf("fill flag:\n");
-	access_auth_resp_packet->flag = 0x04;
+	access_auth_resp_packet->flag = access_auth_requ_packet->flag;
 
-	//fill auth identify, same as auth active packet
-	printf("fill auth identify, unfinished!!!\n");
-	memset((BYTE *)&access_auth_resp_packet->authidentify, 0, sizeof(access_auth_resp_packet->authidentify));
+	//fill auth identify, same as access auth requ packet
+	printf("fill auth identify:\n");
+	memcpy((BYTE *)&access_auth_resp_packet->authidentify,(BYTE *)&access_auth_requ_packet->authidentify, sizeof(access_auth_resp_packet->authidentify));
 	
 	//fill asue rand number
-	printf("fill asue rand number, unfinished!!!\n");
-	memset((BYTE *)&access_auth_resp_packet->asuechallenge, 0, sizeof(access_auth_resp_packet->aechallenge));
+	printf("fill asue rand number:\n");
+	memcpy((BYTE *)&access_auth_resp_packet->asuechallenge, (BYTE *)&access_auth_requ_packet->asuechallenge, sizeof(access_auth_resp_packet->aechallenge));
 
 	//fill ae rand number
-	printf("fill ae rand number, unfinished!!!\n");
-	memset((BYTE *)&access_auth_resp_packet->aechallenge, 0, sizeof(access_auth_resp_packet->aechallenge));
+	printf("fill ae rand number:\n");
+	memcpy((BYTE *)&access_auth_resp_packet->aechallenge, (BYTE *)&access_auth_requ_packet->aechallenge, sizeof(access_auth_resp_packet->aechallenge));
 
 	//fill ae cipher data
 	printf("fill ae cipher data, unfinished!!!\n");
 	memset((BYTE *)&access_auth_resp_packet->aekeydata, 0, sizeof(access_auth_resp_packet->aekeydata));
 
-	//fill access result
-	printf("fill access result, with some problem???\n");
-	access_auth_resp_packet->accessresult = 0; // access succeed
-
 	//fill certificate valid result
 	printf("fill certificate valid result complete.\n");
 	//almost same type and content as certificate_auth_resp_packet, except addid segment
-	//access_auth_resp_packet->cervalidresult is filled in HandleProcessWAPIProtocolCertAuthResp function called before
+	//access_auth_resp_packet->cervalidresult is filled in "HandleProcessWAPIProtocolCertAuthResp" function called before
 	//So skip this step.
+
+	//fill access result, depend on "fill certificate valid result" step
+	printf("fill access result, with some problem???\n");
+	access_auth_resp_packet->accessresult = 0; // access succeed
 
 	//fill packet length
 	access_auth_resp_packet->wai_packet_head.length = sizeof(access_auth_resp); 
@@ -1154,10 +1155,9 @@ int fill_access_auth_resp_packet(int user_ID, access_auth_resp *access_auth_resp
 	return TRUE;
 }
 
-int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_resp *access_auth_resp_packet)
+int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet)
 {
-	memset((BYTE *)access_auth_resp_packet, 0, sizeof(access_auth_resp));
-	if (!fill_access_auth_resp_packet(user_ID, access_auth_resp_packet)){
+	if (!fill_access_auth_resp_packet(user_ID, access_auth_requ_packet, access_auth_resp_packet)){
 		printf("fill access auth responce packet failed!\n");
 	}
 	
@@ -1174,14 +1174,10 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	certificate_auth_resp certificate_auth_resp_packet;
 	access_auth_resp access_auth_resp_packet;
 	
-
 	//1) ProcessWAPIProtocolAuthActive
 	printf("***\n 1) ProcessWAPIProtocolAuthActive: \n");
+	memset((BYTE *)&auth_active_packet, 0, sizeof(auth_active));
 	ProcessWAPIProtocolAuthActive(user_ID, &auth_active_packet);
-	//int i;
-	//for(i=0; i<sizeof(auth_active_packet); i++)
-	//	printf("%x", ((BYTE *)&auth_active_packet)[i]);
-	//printf("\n");
 	send_to_peer(new_asue_socket, (BYTE *)&auth_active_packet, sizeof(auth_active_packet));
 
 	//2) ProcessWAPIProtocolAccessAuthRequest
@@ -1191,8 +1187,8 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	recv_from_peer(new_asue_socket, (BYTE *)&access_auth_requ_packet, sizeof(access_auth_requ_packet));
 
 	//verify access_auth_requ_packet
-	HandleWAPIProtocolAccessAuthRequest(user_ID, &access_auth_requ_packet);
-
+	HandleWAPIProtocolAccessAuthRequest(user_ID, &auth_active_packet, &access_auth_requ_packet);
+	
 	//3) ProcessWAPIProtocolCertAuthRequest
 	printf("connect to asu.\n");
     asu_socket = connect_to_asu();
@@ -1202,7 +1198,6 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	send_to_peer(asu_socket,(BYTE *)&certificate_auth_requ_packet, sizeof(certificate_auth_requ_packet));
 
 	//4) ProcessWAPIProtocolCertAuthResp
-
 	printf("***\n 4) HandleWAPIProtocolCertAuthResp: \n");
 	printf("recv Cert Auth Resp packet from ASU...\n");
 	recv_from_peer(asu_socket, (BYTE *)&certificate_auth_resp_packet, sizeof(certificate_auth_resp));
@@ -1210,7 +1205,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 
 	//5) ProcessWAPIProtocolAccessAuthResp
 	printf("***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
-	ProcessWAPIProtocolAccessAuthResp(user_ID, &access_auth_resp_packet);
+	ProcessWAPIProtocolAccessAuthResp(user_ID, &access_auth_requ_packet, &access_auth_resp_packet);
 	send_to_peer(new_asue_socket, (BYTE *)&access_auth_resp_packet, sizeof(access_auth_resp_packet));
 	
 }
