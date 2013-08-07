@@ -1172,8 +1172,7 @@ int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_resp *access_auth
 	return TRUE;
 }
 
-//void ProcessWAPIProtocol(int new_asue_socket)
-void ProcessWAPIProtocol()
+void ProcessWAPIProtocol(int new_asue_socket)
 {
 	int user_ID = 2;
 	int asu_socket;
@@ -1184,23 +1183,23 @@ void ProcessWAPIProtocol()
 	access_auth_resp access_auth_resp_packet;
 	
 
-//	//1) ProcessWAPIProtocolAuthActive
-//	printf("***\n 1) ProcessWAPIProtocolAuthActive: \n");
-//	ProcessWAPIProtocolAuthActive(user_ID, &auth_active_packet);
-//	//int i;
-//	//for(i=0; i<sizeof(auth_active_packet); i++)
-//	//	printf("%x", ((BYTE *)&auth_active_packet)[i]);
-//	//printf("\n");
-//	send_to_peer(new_asue_socket, (BYTE *)&auth_active_packet, sizeof(auth_active_packet));
-//
-//	//2) ProcessWAPIProtocolAccessAuthRequest
-//	printf("***\n 2) HandleWAPIProtocolAccessAuthRequest: \n");
-//	memset((BYTE *)&access_auth_requ_packet, 0, sizeof(access_auth_requ));
-//	printf("recv auth active packet from ASUE...\n");
-//	recv_from_peer(new_asue_socket, (BYTE *)&access_auth_requ_packet, sizeof(access_auth_requ_packet));
-//
-//	//verify access_auth_requ_packet
-//	HandleWAPIProtocolAccessAuthRequest(user_ID, &access_auth_requ_packet);
+	//1) ProcessWAPIProtocolAuthActive
+	printf("***\n 1) ProcessWAPIProtocolAuthActive: \n");
+	ProcessWAPIProtocolAuthActive(user_ID, &auth_active_packet);
+	//int i;
+	//for(i=0; i<sizeof(auth_active_packet); i++)
+	//	printf("%x", ((BYTE *)&auth_active_packet)[i]);
+	//printf("\n");
+	send_to_peer(new_asue_socket, (BYTE *)&auth_active_packet, sizeof(auth_active_packet));
+
+	//2) ProcessWAPIProtocolAccessAuthRequest
+	printf("***\n 2) HandleWAPIProtocolAccessAuthRequest: \n");
+	memset((BYTE *)&access_auth_requ_packet, 0, sizeof(access_auth_requ));
+	printf("recv auth active packet from ASUE...\n");
+	recv_from_peer(new_asue_socket, (BYTE *)&access_auth_requ_packet, sizeof(access_auth_requ_packet));
+
+	//verify access_auth_requ_packet
+	HandleWAPIProtocolAccessAuthRequest(user_ID, &access_auth_requ_packet);
 	
 	//3) ProcessWAPIProtocolCertAuthRequest
 	printf("connect to asu.\n");
@@ -1217,10 +1216,10 @@ void ProcessWAPIProtocol()
 	recv_from_peer(asu_socket, (BYTE *)&certificate_auth_resp_packet, sizeof(certificate_auth_resp));
 	ProcessWAPIProtocolCertAuthResp(user_ID, &certificate_auth_resp_packet,&access_auth_resp_packet);//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
 
-//	//5) ProcessWAPIProtocolAccessAuthResp
-//	printf("***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
-//	ProcessWAPIProtocolAccessAuthResp(user_ID, &access_auth_resp_packet);
-//	send_to_peer(new_asue_socket, (BYTE *)&access_auth_resp_packet, sizeof(access_auth_resp_packet));
+	//5) ProcessWAPIProtocolAccessAuthResp
+	printf("***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
+	ProcessWAPIProtocolAccessAuthResp(user_ID, &access_auth_resp_packet);
+	send_to_peer(new_asue_socket, (BYTE *)&access_auth_resp_packet, sizeof(access_auth_resp_packet));
 	
 }
 
@@ -1323,9 +1322,8 @@ int main(int argc, char **argv)
 	 printf("res = %d\n",(int)res);
 	 
 */
-//	printf("listen from asue.\n");
-//	listen_from_asue();
-	ProcessWAPIProtocol();
+	printf("listen from asue.\n");
+	listen_from_asue();
 
 	return 0;
 
