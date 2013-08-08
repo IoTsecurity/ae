@@ -969,7 +969,7 @@ int fill_certificate_auth_requ_packet(int user_ID,access_auth_requ *access_auth_
 	memset(cert_buffer,0,sizeof(cert_buffer));
 	cert_len = 0;
 
-	if (!getCertData(2, cert_buffer, &cert_len)) //读取AE证书，"usercert2.pem",uesrID=2
+	if (!getCertData(user_ID, cert_buffer, &cert_len)) //读取AE证书，"usercert2.pem",uesrID=2
 	{
 		printf("将证书保存到缓存buffer失败!");
 		return FALSE;
@@ -1017,7 +1017,7 @@ int ProcessWAPIProtocolCertAuthRequest(int user_ID,access_auth_requ *access_auth
 
 //4)
 
-int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet)
+int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *certificate_auth_requ_packet,certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet)
 {
 	//读取CA(驻留在ASU)中的公钥证书获取CA公钥
 	EVP_PKEY *asupubKey = NULL;
@@ -1059,6 +1059,25 @@ int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_resp *ce
 //	}
 
 
+	//验证ASUE随机数是否一致(证书认证请求分组vs证书认证响应分组)
+	printf("verify AE rand number between certificate_auth_requ vs certificate_auth_resp_packet:\n");
+	if (memcmp(certificate_auth_resp_packet->cervalidresult.random1,
+			certificate_auth_requ_packet->aechallenge,
+			sizeof(certificate_auth_requ_packet->aechallenge)) != 0)
+	{
+		printf("verify ASUE random number failed between certificate_auth_requ vs certificate_auth_resp_packet!\n");
+		return FALSE;
+	}
+
+	//检查ASU对ASUE证书的验证结果字段(certificate_auth_resp_packet->cervalidresult.cerresult1)
+	printf("verify cert valid result of ASUE:\n");
+	if (certificate_auth_resp_packet->cervalidresult.cerresult1!= 0)
+	{
+		printf("asu verify asue cert valid result failed.\n");
+		return FALSE;
+	}
+	else
+		printf("Authentication succeed!!\n");       //asu verify asue cert valid result succeed
 
 	//读取证书认证响应分组中的证书验证结果字段，将该字段拷贝到接入认证响应分组中的复合证书验证结果的证书验证结果字段中
 	memcpy(&(access_auth_resp_packet->cervalrescomplex.ae_asue_cert_valid_result),&(certificate_auth_resp_packet->cervalidresult),sizeof(certificate_valid_result));
@@ -1071,10 +1090,10 @@ int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_resp *ce
 }
 
 
-int ProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet)//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
+int ProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *certificate_auth_requ_packet,certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet)//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
 {
 	memset((BYTE *)access_auth_resp_packet, 0, sizeof(access_auth_resp));
-	if (!HandleProcessWAPIProtocolCertAuthResp(user_ID,certificate_auth_resp_packet,access_auth_resp_packet))
+	if (!HandleProcessWAPIProtocolCertAuthResp(user_ID,certificate_auth_requ_packet,certificate_auth_resp_packet,access_auth_resp_packet))
 	{
 		printf("handle certificate auth resp packet failed!\n");
 	}
@@ -1122,9 +1141,13 @@ int fill_access_auth_resp_packet(int user_ID, access_auth_requ *access_auth_requ
 	//access_auth_resp_packet->cervalidresult is filled in "HandleProcessWAPIProtocolCertAuthResp" function called before
 	//So skip this step.
 
-	//fill access result, depend on "fill certificate valid result" step
-	printf("fill access result, with some problem???\n");
-	access_auth_resp_packet->accessresult = 0; // access succeed
+	//fill asue access result, depend on "fill certificate valid result" step
+	printf("fill access result:\n");
+	if(access_auth_resp_packet->cervalrescomplex.ae_asue_cert_valid_result.cerresult1 == 0)
+	{
+		access_auth_resp_packet->accessresult = 0; // by means of asu's asue cerresult1,ae set asue's access result(0-succeed,1-failed)
+	}
+
 
 	//fill packet length
 	access_auth_resp_packet->wai_packet_head.length = sizeof(access_auth_resp); 
@@ -1188,7 +1211,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 
 	//verify access_auth_requ_packet
 	HandleWAPIProtocolAccessAuthRequest(user_ID, &auth_active_packet, &access_auth_requ_packet);
-	
+
 	//3) ProcessWAPIProtocolCertAuthRequest
 	printf("connect to asu.\n");
     asu_socket = connect_to_asu();
@@ -1201,7 +1224,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	printf("***\n 4) HandleWAPIProtocolCertAuthResp: \n");
 	printf("recv Cert Auth Resp packet from ASU...\n");
 	recv_from_peer(asu_socket, (BYTE *)&certificate_auth_resp_packet, sizeof(certificate_auth_resp));
-	ProcessWAPIProtocolCertAuthResp(user_ID, &certificate_auth_resp_packet,&access_auth_resp_packet);//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
+	ProcessWAPIProtocolCertAuthResp(user_ID,&certificate_auth_requ_packet, &certificate_auth_resp_packet,&access_auth_resp_packet);//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
 
 	//5) ProcessWAPIProtocolAccessAuthResp
 	printf("***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
