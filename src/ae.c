@@ -868,6 +868,10 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 	BYTE derasuepubkey[1024];
 	int asuepubkeyLen, i;
 	asuepubKey = getpubkeyfromcert(asue_ID);
+	if(asuepubKey == NULL){
+		printf("get asue's public key failed.\n");
+		return FALSE;
+		}
 
 	pTmp = derasuepubkey;
 	//把证书公钥转换为DER编码的数据，以方便打印(aepubkey结构体不方便打印)
@@ -1025,6 +1029,10 @@ int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *ce
 	BYTE derasupubkey[1024];
 	int asupubkeyLen, i;
 	asupubKey = getpubkeyfromcert(0);
+	if(asupubKey == NULL){
+		printf("get asu's public key failed.\n");
+		return FALSE;
+		}
 
 	pTmp = derasupubkey;
 	//把证书公钥转换为DER编码的数据，以方便打印(aepubkey结构体不方便打印)
@@ -1096,6 +1104,7 @@ int ProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *certific
 	if (!HandleProcessWAPIProtocolCertAuthResp(user_ID,certificate_auth_requ_packet,certificate_auth_resp_packet,access_auth_resp_packet))
 	{
 		printf("handle certificate auth resp packet failed!\n");
+		return FALSE;
 	}
 
 	return TRUE;
