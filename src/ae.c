@@ -856,7 +856,7 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 {
 	
 	//write asue cert into cert file
-	printf("write ae cert into cert file:\n");
+	printf("write asue cert into cert file:\n");
 	int asue_ID = 1;
 	writeCertFile(asue_ID, (BYTE *)access_auth_requ_packet->certificatestaasue.cer_X509, (int)access_auth_requ_packet->certificatestaasue.cer_length);
 
