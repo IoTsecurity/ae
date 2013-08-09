@@ -1,7 +1,7 @@
 /*
  ============================================================================
  Name        : ae.c
- Author      : lsc
+ Author      : lsc yaoyao
  Version     :
  Copyright   : R & D Center of Internet of Things Security
  Description : Hello World in C, Ansi-style
@@ -965,6 +965,7 @@ int fill_certificate_auth_requ_packet(int user_ID,access_auth_requ *access_auth_
 	//fill asue certificate
 
 	memcpy(&(certificate_auth_requ_packet->staasuecer),&(access_auth_requ_packet->certificatestaasue),sizeof(certificate));
+	//memset((BYTE *)&(certificate_auth_requ_packet->staasuecer),0,sizeof(certificate));
 
 	//fill ae certificate
 	BYTE cert_buffer[5000];
@@ -1239,7 +1240,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	printf("***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
 	ProcessWAPIProtocolAccessAuthResp(user_ID, &access_auth_requ_packet, &access_auth_resp_packet);
 	send_to_peer(new_asue_socket, (BYTE *)&access_auth_resp_packet, sizeof(access_auth_resp_packet));
-	
+
 }
 
 void * serve_each_asue(void * new_server_socket_to_client)
