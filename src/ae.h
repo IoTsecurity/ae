@@ -20,6 +20,7 @@
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
+#include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/asn1.h> 
@@ -304,5 +305,20 @@ typedef struct _access_auth_resp
 	certificate_valid_result_complex   cervalrescomplex;                /* 复合证书验证结果 */
     sign_attribute                     aesign;                          /* AE的签名 */
 }access_auth_resp;
+
+/* 证书签发请求分组 */
+typedef struct _certificate_sign_requ
+{
+	packet_head       wai_packet_head;                                   /* WAI协议分组基本格式包头 */
+	WORD              certificate_sign_requ_buffer_len;                  /* 证书签发请求buffer数组数据有效长度 */
+    BYTE              certificate_sign_requ_buffer[MAX_X509_DATA_LEN];   /* 证书签发请求buffer数组 */
+}certificate_sign_requ;
+
+/* 证书签发响应分组 */
+typedef struct _certificate_sign_resp
+{
+	packet_head       wai_packet_head;                                   /* WAI协议分组基本格式包头 */
+	certificate       usercer;                                           /* 用户的证书(签发后的) */
+}certificate_sign_resp;
 
 #endif /* AE_H_ */
