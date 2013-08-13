@@ -1255,7 +1255,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 		getpeername(new_asue_socket, (struct sockaddr*) &asueaddr, &length);
 		inet_ntop(AF_INET, &asueaddr.sin_addr, abuf, INET_ADDRSTRLEN);
 		printf("\n");
-		char *ffmpeg_prog_dir="";"/home/yaoyao/ffmpeg_sources/ffmpeg/";
+		char *ffmpeg_prog_dir="";//"/home/yaoyao/ffmpeg_sources/ffmpeg/";
 		char ffmpeg_cmd[256];
 		//snprintf(ffmpeg_cmd,255,"%sffmpeg -debug ts -i rtsp://%s:8557/PSIA/Streaming/channels/2?videoCodecType=H.264 -vcodec copy -an http://localhost:8090/feed1.ffm",ffmpeg_prog_dir, abuf);
 		snprintf(ffmpeg_cmd,255,"%sffmpeg -debug ts -i rtsp://192.168.115.40:8557/PSIA/Streaming/channels/2?videoCodecType=H.264 -vcodec copy -an http://localhost:8090/feed1.ffm >/dev/null 2>/dev/null",ffmpeg_prog_dir);
