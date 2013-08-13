@@ -24,6 +24,7 @@
 
 //static char *ASUE_ip_addr;
 static char *ASU_ip_addr;
+pid_t pid;
 
 typedef struct user
 {
@@ -143,7 +144,7 @@ int send_to_peer(int new_server_socket, BYTE *send_buffer, int send_len)
 {
 
 	int length = send(new_server_socket,send_buffer,send_len,0);
-	printf("---- send %d bytes -----\n",length);
+	printf("--- send %d bytes ---\n",length);
 
     if(length <0){
         printf("Socket Send Data Failed Or Closed\n");
@@ -157,14 +158,16 @@ int send_to_peer(int new_server_socket, BYTE *send_buffer, int send_len)
 
 int recv_from_peer(int new_server_socket, BYTE *recv_buffer, int recv_len)
 {
-	int length = recv(new_server_socket,recv_buffer, recv_len,0);
+	int length = 0;
+	length = recv(new_server_socket,recv_buffer, recv_len,MSG_WAITALL);//MSG_WAITALL
+	
 	if (length < 0)
 	{
 		printf("Receive Data From Server Failed\n");
 		return FALSE;
 	}else if(length < recv_len)
 	{
-		printf("Receive data from server less than required.\n");
+		printf("Receive data from server less than required, %d bytes.\n",length);
 		return FALSE;
 	}else if(length > recv_len)
 	{
@@ -173,7 +176,7 @@ int recv_from_peer(int new_server_socket, BYTE *recv_buffer, int recv_len)
 	}
 	else
 	{
-		printf("receive data succeed, %d bytes.\n",length);
+		printf("--- receive data succeed, %d bytes. ---\n",length);
 		return TRUE;
 	}
 
@@ -192,7 +195,7 @@ BOOL getCertData(int userID, BYTE buf[], int *len)
 		sprintf(certname, "./cert/usercert%d.pem", userID);
 
 
-	printf("cert file name: %s\n", certname);
+	printf("  cert file name: %s\n", certname);
 
 	fp = fopen(certname, "rb");
 	if (fp == NULL)
@@ -201,9 +204,9 @@ BOOL getCertData(int userID, BYTE buf[], int *len)
 		return FALSE;
 	}
 	*len = fread(buf, 1, 5000, fp);
-	printf("cert's length is %d\n", *len);
+	printf("  cert's length is %d\n", *len);
 	fclose(fp);
-	printf("将证书保存到缓存buffer成功!\n");
+	printf("  将证书保存到缓存buffer成功!\n");
 
 	return TRUE;
 }
@@ -219,7 +222,7 @@ BOOL writeCertFile(int userID, BYTE buf[], int len)
 	else
 		sprintf(certname, "./cert/usercert%d.pem", userID);
 
-	printf("cert file name: %s\n", certname);
+	printf("  cert file name: %s\n", certname);
 
 	fp = fopen(certname, "w");
 	if (fp == NULL)
@@ -228,9 +231,9 @@ BOOL writeCertFile(int userID, BYTE buf[], int len)
 		return FALSE;
 	}
 	int res = fwrite(buf, 1, len, fp);
-	printf("cert's length is %d\n", len);
+	printf("  cert's length is %d\n", len);
 	fclose(fp);
-	printf("write cert complete!\n");
+	printf("  write cert complete!\n");
 
 	return TRUE;
 }
@@ -261,7 +264,7 @@ EVP_PKEY * getprivkeyfromprivkeyfile(int userID)
 		sprintf(keyname, "./private/userkey%d.pem", userID);
 	fp = fopen(keyname, "r");
 
-	printf("key file name: %s\n", keyname);
+	printf("  key file name: %s\n", keyname);
 	if (fp == NULL)
 	{
 		fprintf(stderr, "Unable to open %s for RSA priv params\n", keyname);
@@ -383,7 +386,7 @@ BOOL verify_sign(BYTE *input,int sign_input_len,BYTE * sign_value, unsigned int 
 		return FALSE;
 	} else
 	{
-		printf("验证签名正确!!!\n");
+		printf("  验证签名正确!!!\n");
 	}
 	//释放内存
 //	EVP_PKEY_free(pubKey);//pubkey只是作为参数传进来，其清理内存留给其调用者完成，这一点与参考程序不同
@@ -560,7 +563,7 @@ int getLocalIdentity(identity *localIdentity, int localUserID)
 		//sprintf(certname, "./demoCA/newcerts/usercert%d.pem", certnum);  //终端运行./client
 		sprintf(certname, "./cert/usercert%d.pem", localUserID);                //eclipse调试或运行
 
-	printf("cert file name: %s\n", certname);
+	printf("  cert file name: %s\n", certname);
 
 	SSLeay_add_all_algorithms();   //\u52a0\u8f7d\u76f8\u5173\u7b97\u6cd5
 
@@ -653,7 +656,7 @@ BOOL gen_sign(BYTE * input,int sign_input_len,BYTE * sign_value, unsigned int *s
 	}
 
 	* sign_output_len = temp_sign_len;
-
+/*
 	printf("签名值是: \n");
 	for (i = 0; i < * sign_output_len; i++)
 	{
@@ -662,6 +665,7 @@ BOOL gen_sign(BYTE * input,int sign_input_len,BYTE * sign_value, unsigned int *s
 		printf("%02x ", sign_value[i]);
 	}
 	printf("\n");
+*/
 	//清理内存
 	EVP_MD_CTX_cleanup(&mdctx);
 	return TRUE;
@@ -856,7 +860,7 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 {
 	
 	//write asue cert into cert file
-	printf("write ae cert into cert file:\n");
+	printf("write asue cert into cert file:\n");
 	int asue_ID = 1;
 	writeCertFile(asue_ID, (BYTE *)access_auth_requ_packet->certificatestaasue.cer_X509, (int)access_auth_requ_packet->certificatestaasue.cer_length);
 
@@ -876,12 +880,6 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 	pTmp = derasuepubkey;
 	//把证书公钥转换为DER编码的数据，以方便打印(aepubkey结构体不方便打印)
 	asuepubkeyLen = i2d_PublicKey(asuepubKey, &pTmp);
-	printf("asue's PublicKey is: \n");
-	for (i = 0; i < asuepubkeyLen; i++)
-	{
-		printf("%02x", derasuepubkey[i]);
-	}
-	printf("\n");
 
 	//verify the sign
 	if (verify_sign((BYTE *) access_auth_requ_packet,
@@ -889,7 +887,7 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 			access_auth_requ_packet->asuesign.sign.data,
 			access_auth_requ_packet->asuesign.sign.length, asuepubKey))
 	{
-		printf("验证ASUE签名正确......\n");
+		printf("  验证ASUE签名正确......\n");
 		EVP_PKEY_free(asuepubKey);
 	}else{
 		printf("asue's sign verify failed.\n");
@@ -1038,12 +1036,6 @@ int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *ce
 	pTmp = derasupubkey;
 	//把证书公钥转换为DER编码的数据，以方便打印(aepubkey结构体不方便打印)
 	asupubkeyLen = i2d_PublicKey(asupubKey, &pTmp);
-	printf("asu's PublicKey is: \n");
-	for (i = 0; i < asupubkeyLen; i++)
-	{
-		printf("%02x", derasupubkey[i]);
-	}
-	printf("\n");
 
 	//验证ASU服务器对整个证书认证响应分组(除本字段外)的签名，检验该分组的完整性、验证该份组的发送源身份
 	if (verify_sign((BYTE *) certificate_auth_resp_packet,
@@ -1196,11 +1188,17 @@ int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_requ *access_auth
 	
 	return TRUE;
 }
+/*
+void runffmpeg(pid_t *ffmpegpid, int res)
+{
 
+}
+*/
 void ProcessWAPIProtocol(int new_asue_socket)
 {
 	int user_ID = 2;
 	int asu_socket;
+	int auth_result=FALSE;
 	auth_active auth_active_packet;
 	access_auth_requ access_auth_requ_packet;
 	certificate_auth_requ certificate_auth_requ_packet;
@@ -1208,13 +1206,15 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	access_auth_resp access_auth_resp_packet;
 	
 	//1) ProcessWAPIProtocolAuthActive
-	printf("***\n 1) ProcessWAPIProtocolAuthActive: \n");
+	printf("\n***\n 1) ProcessWAPIProtocolAuthActive: \n");
+	//stop for keyboard
+	getchar();
 	memset((BYTE *)&auth_active_packet, 0, sizeof(auth_active));
 	ProcessWAPIProtocolAuthActive(user_ID, &auth_active_packet);
 	send_to_peer(new_asue_socket, (BYTE *)&auth_active_packet, sizeof(auth_active_packet));
 
 	//2) ProcessWAPIProtocolAccessAuthRequest
-	printf("***\n 2) HandleWAPIProtocolAccessAuthRequest: \n");
+	printf("\n***\n 2) HandleWAPIProtocolAccessAuthRequest: \n");
 	memset((BYTE *)&access_auth_requ_packet, 0, sizeof(access_auth_requ));
 	printf("recv auth active packet from ASUE...\n");
 	recv_from_peer(new_asue_socket, (BYTE *)&access_auth_requ_packet, sizeof(access_auth_requ_packet));
@@ -1223,23 +1223,61 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	HandleWAPIProtocolAccessAuthRequest(user_ID, &auth_active_packet, &access_auth_requ_packet);
 
 	//3) ProcessWAPIProtocolCertAuthRequest
-	printf("connect to asu.\n");
+	printf("\n***\n Connect to asu.\n");
     asu_socket = connect_to_asu();
 
-	printf("***\n 3) ProcessWAPIProtocolCertAuthRequest: \n");
+	printf("\n***\n 3) ProcessWAPIProtocolCertAuthRequest: \n");
+	//stop for keyboard
+	getchar();
 	ProcessWAPIProtocolCertAuthRequest(user_ID, &access_auth_requ_packet,&certificate_auth_requ_packet);
 	send_to_peer(asu_socket,(BYTE *)&certificate_auth_requ_packet, sizeof(certificate_auth_requ_packet));
 
 	//4) ProcessWAPIProtocolCertAuthResp
-	printf("***\n 4) HandleWAPIProtocolCertAuthResp: \n");
+	printf("\n***\n 4) HandleWAPIProtocolCertAuthResp: \n");
 	printf("recv Cert Auth Resp packet from ASU...\n");
 	recv_from_peer(asu_socket, (BYTE *)&certificate_auth_resp_packet, sizeof(certificate_auth_resp));
-	ProcessWAPIProtocolCertAuthResp(user_ID,&certificate_auth_requ_packet, &certificate_auth_resp_packet,&access_auth_resp_packet);//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
+
+	//pid_t pid;
+	auth_result = ProcessWAPIProtocolCertAuthResp(user_ID,&certificate_auth_requ_packet, &certificate_auth_resp_packet,&access_auth_resp_packet);//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
 
 	//5) ProcessWAPIProtocolAccessAuthResp
-	printf("***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
+	printf("\n***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
+	//stop for keyboard
+	getchar();
 	ProcessWAPIProtocolAccessAuthResp(user_ID, &access_auth_requ_packet, &access_auth_resp_packet);
 	send_to_peer(new_asue_socket, (BYTE *)&access_auth_resp_packet, sizeof(access_auth_resp_packet));
+
+	//run ffmpeg
+	if(auth_result){
+		char abuf[INET_ADDRSTRLEN];
+		struct sockaddr_in asueaddr;
+		socklen_t length = sizeof(asueaddr);
+		getpeername(new_asue_socket, (struct sockaddr*) &asueaddr, &length);
+		inet_ntop(AF_INET, &asueaddr.sin_addr, abuf, INET_ADDRSTRLEN);
+		printf("\n");
+		char *ffmpeg_prog_dir="";"/home/yaoyao/ffmpeg_sources/ffmpeg/";
+		char ffmpeg_cmd[256];
+		//snprintf(ffmpeg_cmd,255,"%sffmpeg -debug ts -i rtsp://%s:8557/PSIA/Streaming/channels/2?videoCodecType=H.264 -vcodec copy -an http://localhost:8090/feed1.ffm",ffmpeg_prog_dir, abuf);
+		snprintf(ffmpeg_cmd,255,"%sffmpeg -debug ts -i rtsp://192.168.115.40:8557/PSIA/Streaming/channels/2?videoCodecType=H.264 -vcodec copy -an http://localhost:8090/feed1.ffm >/dev/null 2>/dev/null",ffmpeg_prog_dir);
+		printf(ffmpeg_cmd);
+		printf("\n");
+		//system(ffmpeg_cmd);
+
+		if((pid = fork()) < 0){
+			perror("fork()");
+		}else if(pid == 0){
+			execl("/bin/sh", "sh", "-c", ffmpeg_cmd, (char *)0);
+			pid++;
+		}else{}
+	}
+	else{
+		printf("kill %d\n",pid);
+		kill(pid,SIGABRT);
+		pid++;
+		printf("kill %d\n",pid);
+		kill(pid,SIGABRT);
+	}
+
 
 }
 

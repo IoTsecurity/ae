@@ -15,6 +15,8 @@
 #include <memory.h>
 #include <errno.h>
 #include <pthread.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 
 #include <openssl/crypto.h>
