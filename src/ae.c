@@ -227,7 +227,8 @@ BOOL writeCertFile(int userID, BYTE buf[], int len)
 	else
 		sprintf(certname, "./cert/usercert%d.pem", userID);
 
-	printf("  cert file name: %s\n", certname);
+	if(annotation == 2)
+		printf("  cert file name: %s\n", certname);
 
 	fp = fopen(certname, "w");
 	if (fp == NULL)
@@ -236,9 +237,11 @@ BOOL writeCertFile(int userID, BYTE buf[], int len)
 		return FALSE;
 	}
 	int res = fwrite(buf, 1, len, fp);
-	printf("  cert's length is %d\n", len);
+	if(annotation == 2)
+		printf("  cert's length is %d\n", len);
 	fclose(fp);
-	printf("  write cert complete!\n");
+	if(annotation == 2)
+		printf("  write cert complete!\n");
 
 	return TRUE;
 }
@@ -1293,8 +1296,11 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	if (annotation == 1)
 		printf("\n***\n 4) 证书认证响应分组(认证服务器->网络硬盘录像机，认证服务器处理该分组): \n");
 	else if (annotation == 2)
+	{
 		printf("\n***\n 4) HandleWAPIProtocolCertAuthResp: \n");
-	printf("recv Cert Auth Resp packet from ASU...\n");
+		printf("recv Cert Auth Resp packet from ASU...\n");
+	}
+
 	recv_from_peer(asu_socket, (BYTE *)&certificate_auth_resp_packet, sizeof(certificate_auth_resp));
 
 	//pid_t pid;
