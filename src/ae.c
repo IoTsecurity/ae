@@ -197,7 +197,8 @@ BOOL getCertData(int userID, BYTE buf[], int *len)
 		sprintf(certname, "./cert/usercert%d.pem", userID);
 
 
-	printf("  cert file name: %s\n", certname);
+	if(annotation == 2)
+		printf("  cert file name: %s\n", certname);
 
 	fp = fopen(certname, "rb");
 	if (fp == NULL)
@@ -206,9 +207,11 @@ BOOL getCertData(int userID, BYTE buf[], int *len)
 		return FALSE;
 	}
 	*len = fread(buf, 1, 5000, fp);
-	printf("  cert's length is %d\n", *len);
+	if(annotation == 2)
+		printf("  cert's length is %d\n", *len);
 	fclose(fp);
-	printf("  将证书保存到缓存buffer成功!\n");
+	if(annotation == 2)
+		printf("  将证书保存到缓存buffer成功!\n");
 
 	return TRUE;
 }
@@ -266,7 +269,8 @@ EVP_PKEY * getprivkeyfromprivkeyfile(int userID)
 		sprintf(keyname, "./private/userkey%d.pem", userID);
 	fp = fopen(keyname, "r");
 
-	printf("  key file name: %s\n", keyname);
+	if(annotation == 2)
+		printf("  key file name: %s\n", keyname);
 	if (fp == NULL)
 	{
 		fprintf(stderr, "Unable to open %s for RSA priv params\n", keyname);
@@ -677,7 +681,8 @@ BOOL gen_sign(BYTE * input,int sign_input_len,BYTE * sign_value, unsigned int *s
 int fill_auth_active_packet(int user_ID,auth_active *auth_active_packet)
 {
 	//fill WAI packet head
-	printf("fill WAI packet head:\n");
+	if(annotation == 2)
+		printf("fill WAI packet head:\n");
 	auth_active_packet->wai_packet_head.version = 1;
 	auth_active_packet->wai_packet_head.type = 1;
 	auth_active_packet->wai_packet_head.subtype = AUTH_ACTIVE;
@@ -1259,7 +1264,8 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	else if (annotation == 2)
 		printf("\n***\n 2) HandleWAPIProtocolAccessAuthRequest: \n");
 	memset((BYTE *)&access_auth_requ_packet, 0, sizeof(access_auth_requ));
-	printf("recv auth active packet from ASUE...\n");
+	if (annotation == 2)
+		printf("recv auth active packet from ASUE...\n");
 	recv_from_peer(new_asue_socket, (BYTE *)&access_auth_requ_packet, sizeof(access_auth_requ_packet));
 
 	//verify access_auth_requ_packet
