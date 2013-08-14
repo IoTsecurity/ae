@@ -26,6 +26,8 @@
 static char *ASU_ip_addr;
 pid_t pid;
 
+static annotation = 1;  //1-lvshichao,2-yaoyao
+
 typedef struct user
 {
     int user_ID;
@@ -685,30 +687,36 @@ int fill_auth_active_packet(int user_ID,auth_active *auth_active_packet)
 	auth_active_packet->wai_packet_head.identify = 0;
 
 	//fill flag
-	printf("fill flag:\n");
+	if(annotation == 2)
+		printf("fill flag:\n");
 	auth_active_packet->flag = 0x00;
 
 	//fill auth identify, first time random number
-	printf("fill auth identify:\n");
+	if(annotation == 2)
+		printf("fill auth identify:\n");
 	gen_randnum((BYTE *)&auth_active_packet->authidentify, sizeof(auth_active_packet->authidentify));
 
 	//fill ae rand number 
-	printf("fill ae rand number:\n");
+	if(annotation == 2)
+		printf("fill ae rand number:\n");
 	gen_randnum((BYTE *)&auth_active_packet->aechallenge, sizeof(auth_active_packet->aechallenge));
 
 	//fill local ASU identity
-	printf("fill local ASU identity:\n");
+	if(annotation == 2)
+		printf("fill local ASU identity:\n");
 	int asu_ID = 0;
 	getLocalIdentity(&auth_active_packet->localasuidentity, asu_ID);
 
 	//fill ecdh param
-	printf("fill ecdh param:\n");
+	if(annotation == 2)
+		printf("fill ecdh param:\n");
 	const  char  oid[]={"1.2.156.11235.1.1.2.1"}; 
 	
 	getECDHparam(&auth_active_packet->ecdhparam, oid);
 	
 	//fill ae certificate
-	printf("fill ae certificate:\n");
+	if(annotation == 2)
+		printf("fill ae certificate:\n");
 	auth_active_packet->certificatestaae.cer_identify = 1; //X.509 cert
 	
 	BYTE cert_buffer[5000];
@@ -727,7 +735,8 @@ int fill_auth_active_packet(int user_ID,auth_active *auth_active_packet)
 	auth_active_packet->wai_packet_head.length = sizeof(auth_active);	
 
 	//fill ae signature
-	printf("fill ae signature:\n");
+	if(annotation == 2)
+		printf("fill ae signature:\n");
 	//AE\u4f7f\u7528AE\u7684\u79c1\u94a5(userkey2.pem)\u6765\u751f\u6210AE\u7b7e\u540d
 	EVP_PKEY * privKey;
 	BYTE sign_value[1024];					//保存签名值的数组
@@ -758,6 +767,8 @@ int ProcessWAPIProtocolAuthActive(int user_ID, auth_active *auth_active_packet)
 	if (!fill_auth_active_packet(user_ID, auth_active_packet)){
 		printf("fill auth active packet failed!\n");
 	}
+	else
+		printf("网络硬盘录像机封装【认证激活分组】成功！准备发往摄像机！\n");
 
 	return TRUE;
 	
@@ -860,12 +871,14 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 {
 	
 	//write asue cert into cert file
-	printf("write asue cert into cert file:\n");
+	if(annotation == 2)
+		printf("write asue cert into cert file:\n");
 	int asue_ID = 1;
 	writeCertFile(asue_ID, (BYTE *)access_auth_requ_packet->certificatestaasue.cer_X509, (int)access_auth_requ_packet->certificatestaasue.cer_length);
 
 	//verify sign of ASUE
-	printf("verify sign of ASUE:\n");
+	if(annotation == 2)
+		printf("verify sign of ASUE:\n");
 	//read ae certificate get ae pubkey(公钥)
 	EVP_PKEY *asuepubKey = NULL;
 	BYTE *pTmp = NULL;
@@ -895,21 +908,24 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 		}
 
 	//verify FLAG
-	printf("verify FLAG:\n");
+	if(annotation == 2)
+		printf("verify FLAG:\n");
 	if(access_auth_requ_packet->flag != 0x04){
 		printf("verify flag failed.\n");
 		return FALSE;
 	}
 
 	//verify auth identity, is same auth active packet
-	printf("verify auth identity:\n");
+	if(annotation == 2)
+		printf("verify auth identity:\n");
 	if(memcmp(access_auth_requ_packet->authidentify, 
 		auth_active_packet->authidentify, 
 		sizeof(access_auth_requ_packet->authidentify)) != 0)
 		printf("verify auth identity failed!\n");
 	
 	//verify AE identity
-	printf("verify AE identity, unfinished!!!\n");
+	if(annotation == 2)
+		printf("verify AE identity, unfinished!!!\n");
 	identity localaeidentity;
 	getLocalIdentity(&localaeidentity, user_ID);
 	
@@ -925,7 +941,8 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 	}
 
 	//verify AE rand number, is same auth active packet
-	printf("verify AE rand number:\n");
+	if(annotation == 2)
+		printf("verify AE rand number:\n");
 	if(memcmp(access_auth_requ_packet->aechallenge, 
 		auth_active_packet->aechallenge, 
 		sizeof(access_auth_requ_packet->aechallenge)) != 0)
@@ -1014,6 +1031,8 @@ int ProcessWAPIProtocolCertAuthRequest(int user_ID,access_auth_requ *access_auth
 	{
 		printf("fill certificate auth requ packet failed!\n");
 	}
+	else
+		printf("网络硬盘录像机封装证书认证请求分组成功!准备发往认证服务器！\n");
 	return TRUE;
 }
 
@@ -1061,7 +1080,8 @@ int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *ce
 
 
 	//验证ASUE随机数是否一致(证书认证请求分组vs证书认证响应分组)
-	printf("verify AE rand number between certificate_auth_requ vs certificate_auth_resp_packet:\n");
+	if(annotation == 2)
+		printf("verify AE rand number between certificate_auth_requ vs certificate_auth_resp_packet:\n");
 	if (memcmp(certificate_auth_resp_packet->cervalidresult.random1,
 			certificate_auth_requ_packet->aechallenge,
 			sizeof(certificate_auth_requ_packet->aechallenge)) != 0)
@@ -1071,14 +1091,18 @@ int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *ce
 	}
 
 	//检查ASU对ASUE证书的验证结果字段(certificate_auth_resp_packet->cervalidresult.cerresult1)
-	printf("verify cert valid result of ASUE:\n");
+	if(annotation == 2)
+		printf("verify cert valid result of ASUE:\n");
 	if (certificate_auth_resp_packet->cervalidresult.cerresult1!= 0)
 	{
-		printf("asu verify asue cert valid result failed.\n");
+		//printf("asu verify asue cert valid result failed.\n");
+		printf("警告：网络硬盘录像机验证摄像机失败！不允许该摄像机接入！.\n");
 		return FALSE;
 	}
-	else
+	else if(annotation == 2)
 		printf("Authentication succeed!!\n");       //asu verify asue cert valid result succeed
+	else if(annotation == 1)
+		printf("网络硬盘录像机验证摄像机成功！允许该摄像机接入！\n");       //asu verify asue cert valid result succeed
 
 	//读取证书认证响应分组中的证书验证结果字段，将该字段拷贝到接入认证响应分组中的复合证书验证结果的证书验证结果字段中
 	memcpy(&(access_auth_resp_packet->cervalrescomplex.ae_asue_cert_valid_result),&(certificate_auth_resp_packet->cervalidresult),sizeof(certificate_valid_result));
@@ -1099,6 +1123,8 @@ int ProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *certific
 		printf("handle certificate auth resp packet failed!\n");
 		return FALSE;
 	}
+	else
+		printf("网络硬盘录像机解析证书认证响应分组成功！\n");
 
 	return TRUE;
 }
@@ -1108,7 +1134,8 @@ int fill_access_auth_resp_packet(int user_ID, access_auth_requ *access_auth_requ
 {
 	
 	//fill WAI packet head
-	printf("fill WAI packet head:\n");
+	if(annotation == 2)
+		printf("fill WAI packet head:\n");
 	access_auth_resp_packet->wai_packet_head.version = 1;
 	access_auth_resp_packet->wai_packet_head.type = 1;
 	access_auth_resp_packet->wai_packet_head.subtype = ACCESS_AUTH_RESP;
@@ -1118,33 +1145,40 @@ int fill_access_auth_resp_packet(int user_ID, access_auth_requ *access_auth_requ
 	access_auth_resp_packet->wai_packet_head.identify = 0;
 
 	//fill flag, same as access auth requ packet
-	printf("fill flag:\n");
+	if(annotation == 2)
+		printf("fill flag:\n");
 	access_auth_resp_packet->flag = access_auth_requ_packet->flag;
 
 	//fill auth identify, same as access auth requ packet
-	printf("fill auth identify:\n");
+	if(annotation == 2)
+		printf("fill auth identify:\n");
 	memcpy((BYTE *)&access_auth_resp_packet->authidentify,(BYTE *)&access_auth_requ_packet->authidentify, sizeof(access_auth_resp_packet->authidentify));
 	
 	//fill asue rand number
-	printf("fill asue rand number:\n");
+	if(annotation == 2)
+		printf("fill asue rand number:\n");
 	memcpy((BYTE *)&access_auth_resp_packet->asuechallenge, (BYTE *)&access_auth_requ_packet->asuechallenge, sizeof(access_auth_resp_packet->aechallenge));
 
 	//fill ae rand number
-	printf("fill ae rand number:\n");
+	if(annotation == 2)
+		printf("fill ae rand number:\n");
 	memcpy((BYTE *)&access_auth_resp_packet->aechallenge, (BYTE *)&access_auth_requ_packet->aechallenge, sizeof(access_auth_resp_packet->aechallenge));
 
 	//fill ae cipher data
-	printf("fill ae cipher data, unfinished!!!\n");
+	if(annotation == 2)
+		printf("fill ae cipher data, unfinished!!!\n");
 	memset((BYTE *)&access_auth_resp_packet->aekeydata, 0, sizeof(access_auth_resp_packet->aekeydata));
 
 	//fill certificate valid result
-	printf("fill certificate valid result complete.\n");
+	if(annotation == 2)
+		printf("fill certificate valid result complete.\n");
 	//almost same type and content as certificate_auth_resp_packet, except addid segment
 	//access_auth_resp_packet->cervalidresult is filled in "HandleProcessWAPIProtocolCertAuthResp" function called before
 	//So skip this step.
 
 	//fill asue access result, depend on "fill certificate valid result" step
-	printf("fill access result:\n");
+	if(annotation == 2)
+		printf("fill access result:\n");
 	if(access_auth_resp_packet->cervalrescomplex.ae_asue_cert_valid_result.cerresult1 == 0)
 	{
 		access_auth_resp_packet->accessresult = 0; // by means of asu's asue cerresult1,ae set asue's access result(0-succeed,1-failed)
@@ -1155,7 +1189,8 @@ int fill_access_auth_resp_packet(int user_ID, access_auth_requ *access_auth_requ
 	access_auth_resp_packet->wai_packet_head.length = sizeof(access_auth_resp); 
 
 	//fill ae signature
-	printf("fill ae signature:\n");
+	if(annotation == 2)
+		printf("fill ae signature:\n");
 	//AE\u4f7f\u7528AE\u7684\u79c1\u94a5(userkey2.pem)\u6765\u751f\u6210AE\u7b7e\u540d
 	EVP_PKEY * privKey;
 	BYTE sign_value[1024];					//保存签名值的数组
@@ -1185,6 +1220,8 @@ int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_requ *access_auth
 	if (!fill_access_auth_resp_packet(user_ID, access_auth_requ_packet, access_auth_resp_packet)){
 		printf("fill access auth responce packet failed!\n");
 	}
+	else
+		printf("网络硬盘录像机封装接入认证响应分组成功！\n");
 	
 	return TRUE;
 }
@@ -1206,7 +1243,10 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	access_auth_resp access_auth_resp_packet;
 	
 	//1) ProcessWAPIProtocolAuthActive
-	printf("\n***\n 1) ProcessWAPIProtocolAuthActive: \n");
+	if(annotation == 1)
+		printf("\n***\n 1) 认证激活分组(网络硬盘录像机->摄像机): \n");
+	else if(annotation == 2)
+		printf("\n***\n 1) ProcessWAPIProtocolAuthActive: \n");
 	//stop for keyboard
 	getchar();
 	memset((BYTE *)&auth_active_packet, 0, sizeof(auth_active));
@@ -1214,7 +1254,10 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	send_to_peer(new_asue_socket, (BYTE *)&auth_active_packet, sizeof(auth_active_packet));
 
 	//2) ProcessWAPIProtocolAccessAuthRequest
-	printf("\n***\n 2) HandleWAPIProtocolAccessAuthRequest: \n");
+	if (annotation == 1)
+		printf("\n***\n 2) 接入认证请求分组(摄像机->网络硬盘录像机，网络硬盘录像机处理该分组): \n");
+	else if (annotation == 2)
+		printf("\n***\n 2) HandleWAPIProtocolAccessAuthRequest: \n");
 	memset((BYTE *)&access_auth_requ_packet, 0, sizeof(access_auth_requ));
 	printf("recv auth active packet from ASUE...\n");
 	recv_from_peer(new_asue_socket, (BYTE *)&access_auth_requ_packet, sizeof(access_auth_requ_packet));
@@ -1223,17 +1266,28 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	HandleWAPIProtocolAccessAuthRequest(user_ID, &auth_active_packet, &access_auth_requ_packet);
 
 	//3) ProcessWAPIProtocolCertAuthRequest
-	printf("\n***\n Connect to asu.\n");
+	if (annotation == 1)
+		printf("\n***\n 网络硬盘录像机开始连接认证服务器: \n");
+	else if (annotation == 2)
+		printf("\n***\n Connect to asu.\n");
     asu_socket = connect_to_asu();
+	if (annotation == 1)
+		printf("\n***\n 网络硬盘录像机连接认证服务器成功！ \n");
 
-	printf("\n***\n 3) ProcessWAPIProtocolCertAuthRequest: \n");
+	if (annotation == 1)
+		printf("\n***\n 3) 证书认证请求分组(网络硬盘录像机->认证服务器): \n");
+	else if (annotation == 2)
+		printf("\n***\n 3) ProcessWAPIProtocolCertAuthRequest: \n");
 	//stop for keyboard
 	getchar();
 	ProcessWAPIProtocolCertAuthRequest(user_ID, &access_auth_requ_packet,&certificate_auth_requ_packet);
 	send_to_peer(asu_socket,(BYTE *)&certificate_auth_requ_packet, sizeof(certificate_auth_requ_packet));
 
 	//4) ProcessWAPIProtocolCertAuthResp
-	printf("\n***\n 4) HandleWAPIProtocolCertAuthResp: \n");
+	if (annotation == 1)
+		printf("\n***\n 4) 证书认证响应分组(认证服务器->网络硬盘录像机，认证服务器处理该分组): \n");
+	else if (annotation == 2)
+		printf("\n***\n 4) HandleWAPIProtocolCertAuthResp: \n");
 	printf("recv Cert Auth Resp packet from ASU...\n");
 	recv_from_peer(asu_socket, (BYTE *)&certificate_auth_resp_packet, sizeof(certificate_auth_resp));
 
@@ -1241,7 +1295,10 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	auth_result = ProcessWAPIProtocolCertAuthResp(user_ID,&certificate_auth_requ_packet, &certificate_auth_resp_packet,&access_auth_resp_packet);//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
 
 	//5) ProcessWAPIProtocolAccessAuthResp
-	printf("\n***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
+	if (annotation == 1)
+		printf("\n***\n 5) 证书认证响应分组(认证服务器->网络硬盘录像机，网络硬盘录像机处理该分组): \n");
+	else if (annotation == 2)
+		printf("\n***\n 5) ProcessWAPIProtocolAccessAuthResp: \n");
 	//stop for keyboard
 	getchar();
 	ProcessWAPIProtocolAccessAuthResp(user_ID, &access_auth_requ_packet, &access_auth_resp_packet);
