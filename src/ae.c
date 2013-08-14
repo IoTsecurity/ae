@@ -572,7 +572,8 @@ int getLocalIdentity(identity *localIdentity, int localUserID)
 		//sprintf(certname, "./demoCA/newcerts/usercert%d.pem", certnum);  //终端运行./client
 		sprintf(certname, "./cert/usercert%d.pem", localUserID);                //eclipse调试或运行
 
-	printf("  cert file name: %s\n", certname);
+	if(annotation == 2)
+		printf("  cert file name: %s\n", certname);
 
 	SSLeay_add_all_algorithms();   //\u52a0\u8f7d\u76f8\u5173\u7b97\u6cd5
 
@@ -945,7 +946,8 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 		printf("data[:20]: %20s, %20s\n", localaeidentity.cer_der.data, access_auth_requ_packet->staaeidentity.cer_der.data);
 		return FALSE;
 	}else {
-		printf("verify AE identity succeed.\n");
+		if(annotation == 2)
+			printf("verify AE identity succeed.\n");
 	}
 
 	//verify AE rand number, is same auth active packet
