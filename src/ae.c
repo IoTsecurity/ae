@@ -1332,24 +1332,25 @@ void ProcessWAPIProtocol(int new_asue_socket)
 		snprintf(ffmpeg_cmd,255,"%sffmpeg -debug ts -i rtsp://192.168.115.40:8557/PSIA/Streaming/channels/2?videoCodecType=H.264 -vcodec copy -an http://localhost:8090/feed1.ffm >/dev/null 2>/dev/null",ffmpeg_prog_dir);
 		printf(ffmpeg_cmd);
 		printf("\n");
-		//system(ffmpeg_cmd);
 
 		if((pid = fork()) < 0){
 			perror("fork()");
 		}else if(pid == 0){
-			execl("/bin/sh", "sh", "-c", ffmpeg_cmd, (char *)0);
+			if(execl("/bin/sh", "sh", "-c", ffmpeg_cmd, (char *)0) < 0){
+				perror("execl failed");
+			}
 			pid++;
 		}else{}
 	}
 	else{
-		int status;
+		//int status;
 		printf("kill %d\n",pid);
 		kill(pid,SIGABRT);
-		//wait(NULL);
+		wait(NULL);
 		pid++;
 		printf("kill %d\n",pid);
 		kill(pid,SIGABRT);
-		//wait(NULL);
+		wait(NULL);
 	}
 
 
