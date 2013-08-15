@@ -17,7 +17,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
+#include <wait.h>
 
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
