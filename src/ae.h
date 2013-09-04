@@ -17,7 +17,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
+#include <wait.h>
 
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
@@ -240,6 +240,14 @@ typedef struct _ecdh_param
 }ecdh_param;
 
 
+/* EAP header */
+typedef struct _EAP_header
+{
+	BYTE code;
+	BYTE identifier;
+	WORD length;
+	BYTE type;
+}EAP_header;
 /************************************************************
 *WAI认证协议相关的认证激活分组、接入认证请求分组、证书认证请求分组、证书认证响应分组、接入认证响应分组
 *************************************************************/
@@ -257,6 +265,12 @@ typedef struct _auth_active
     
 }auth_active;
 
+typedef struct _EAP_auth_active
+{
+	EAP_header eap_header;
+	auth_active auth_active_packet;
+}EAP_auth_active;
+
 /* 接入认证请求 */
 typedef struct _access_auth_requ
 {
@@ -271,6 +285,13 @@ typedef struct _access_auth_requ
     certificate      certificatestaasue;                          /* STAasue证书 */
     sign_attribute   asuesign;                                    /* ASUE的签名 */
 }access_auth_requ;
+
+typedef struct _EAP_access_auth_requ
+{
+	EAP_header eap_header;
+	access_auth_requ access_auth_requ_packet;
+}EAP_access_auth_requ;
+
 
 /* 证书认证请求分组 */
 typedef struct _certificate_auth_requ
@@ -307,6 +328,14 @@ typedef struct _access_auth_resp
 	certificate_valid_result_complex   cervalrescomplex;                /* 复合证书验证结果 */
     sign_attribute                     aesign;                          /* AE的签名 */
 }access_auth_resp;
+
+typedef struct _EAP_access_auth_resp
+{
+	EAP_header eap_header;
+	access_auth_resp access_auth_resp_packet;
+}EAP_access_auth_resp;
+
+
 
 /* 证书签发请求分组 */
 typedef struct _certificate_sign_requ
