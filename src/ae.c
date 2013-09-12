@@ -1461,9 +1461,11 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	//access_auth_requ access_auth_requ_packet;
 	EAP_access_auth_requ eap_access_auth_requ_packet;
 
-	certificate_auth_requ certificate_auth_requ_packet;
-	certificate_auth_resp certificate_auth_resp_packet;
-	
+//	certificate_auth_requ certificate_auth_requ_packet;
+//	certificate_auth_resp certificate_auth_resp_packet;
+	EAP_certificate_auth_requ eap_certificate_auth_requ_packet;//New code
+	EAP_certificate_auth_resp eap_certificate_auth_resp_packet;//New code
+
 	//access_auth_resp access_auth_resp_packet;
 	EAP_access_auth_resp eap_access_auth_resp_packet;
 	
@@ -1477,7 +1479,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	
 	memset((BYTE *)&eap_auth_active_packet, 0, sizeof(eap_auth_active_packet));
 	eap_auth_active_packet.eap_header.code=1;
-	eap_auth_active_packet.eap_header.identifier=1;
+	eap_auth_active_packet.eap_header.identifier=0;
 	eap_auth_active_packet.eap_header.length=sizeof(eap_auth_active_packet);
 	eap_auth_active_packet.eap_header.type=192;
 
@@ -1489,13 +1491,13 @@ void ProcessWAPIProtocol(int new_asue_socket)
 		printf("\n***\n 2) 接入认证请求分组(摄像机->网络硬盘录像机，网络硬盘录像机处理该分组): \n");
 	else if (annotation == 2)
 		printf("\n***\n 2) HandleWAPIProtocolAccessAuthRequest: \n");
-	memset((BYTE *)&access_auth_requ_packet, 0, sizeof(access_auth_requ));
+	memset((BYTE *)&eap_access_auth_requ_packet, 0, sizeof(eap_access_auth_requ));
 	if (annotation == 2)
 		printf("recv auth active packet from ASUE...\n");
-	recv_from_peer(new_asue_socket, (BYTE *)&access_auth_requ_packet, sizeof(access_auth_requ_packet));
+	recv_from_peer(new_asue_socket, (BYTE *)&eap_access_auth_requ_packet, sizeof(eap_access_auth_requ_packet));
 
 	//verify access_auth_requ_packet
-	HandleWAPIProtocolAccessAuthRequest(user_ID, &auth_active_packet, &access_auth_requ_packet);
+	HandleWAPIProtocolAccessAuthRequest(user_ID, &eap_auth_active_packet.auth_active_packet, &eap_access_auth_requ_packet.access_auth_requ_packet);
 
 	//3) ProcessWAPIProtocolCertAuthRequest
 	if (annotation == 1)
@@ -1512,8 +1514,16 @@ void ProcessWAPIProtocol(int new_asue_socket)
 		printf("\n***\n 3) ProcessWAPIProtocolCertAuthRequest: \n");
 	//stop for keyboard
 	getchar();
-	ProcessWAPIProtocolCertAuthRequest(user_ID, &access_auth_requ_packet,&certificate_auth_requ_packet);
-	send_to_peer(asu_socket,(BYTE *)&certificate_auth_requ_packet, sizeof(certificate_auth_requ_packet));
+	
+	memset((BYTE *)&eap_certificate_auth_requ_packet, 0, sizeof(eap_certificate_auth_requ_packet));//New code
+	eap_certificate_auth_requ_packet.eap_header.code=1;//New code
+	eap_certificate_auth_requ_packet.eap_header.identifier=2;//New code
+	eap_certificate_auth_requ_packet.eap_header.length=sizeof(eap_certificate_auth_requ_packet);//New code
+	eap_certificate_auth_requ_packet.eap_header.type=192;//New code
+	
+
+	ProcessWAPIProtocolCertAuthRequest(user_ID, &eap_access_auth_requ_packet.access_auth_requ_packet,&eap_certificate_auth_requ_packet.certificate_auth_requ_packet);
+	send_to_peer(asu_socket,(BYTE *)&eap_certificate_auth_requ_packet, sizeof(eap_certificate_auth_requ_packet));
 
 	//4) ProcessWAPIProtocolCertAuthResp
 	if (annotation == 1)
@@ -1524,11 +1534,11 @@ void ProcessWAPIProtocol(int new_asue_socket)
 		printf("recv Cert Auth Resp packet from ASU...\n");
 	}
 
-	recv_from_peer(asu_socket, (BYTE *)&certificate_auth_resp_packet, sizeof(certificate_auth_resp));
+	recv_from_peer(asu_socket, (BYTE *)&eap_certificate_auth_resp_packet, sizeof(eap_certificate_auth_resp));
 
 	//pid_t pid;
 	//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
-	auth_result = ProcessWAPIProtocolCertAuthResp(user_ID,&certificate_auth_requ_packet, &certificate_auth_resp_packet,&access_auth_resp_packet);
+	auth_result = ProcessWAPIProtocolCertAuthResp(user_ID,&eap_certificate_auth_requ_packet.certificate_auth_requ_packet, &eap_certificate_auth_resp_packet.certificate_auth_resp_packet,&eap_access_auth_resp_packet.access_auth_resp_packet);
 
 	//5) ProcessWAPIProtocolAccessAuthResp
 	if (annotation == 1)
