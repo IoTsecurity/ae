@@ -32,8 +32,8 @@ $ cd /home/yaoyao/test_ffmpeg/ae/Debug
 $ ./ae 192.168.115.33
 
 Camera:
-# cd /opt/yaoyao/asue_arm/
-# ./vmcert.sh	（重置证书）
-# ./asue 192.168.115.224
+$# cd /opt/yaoyao/asue_arm/
+$# ./vmcert.sh	（重置证书）
+$# ./asue 192.168.115.224
 
 Client: [vlc]rtsp://192.168.115.224:5454/live.h264
