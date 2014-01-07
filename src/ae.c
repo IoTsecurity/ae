@@ -280,7 +280,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	ProcessWAPIProtocolAccessAuthResp(user_ID, &eap_access_auth_requ_packet.access_auth_requ_packet, &eap_access_auth_resp_packet.access_auth_resp_packet);
 	send_to_peer(new_asue_socket, (BYTE *)&eap_access_auth_resp_packet, sizeof(eap_access_auth_resp_packet));
 
-	//pid_t pid;
+	// pid is global variable
 
 	//run ffmpeg
 	if(auth_result){
