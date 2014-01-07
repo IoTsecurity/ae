@@ -13,7 +13,7 @@
 #define CHAT_LISTEN_PORT    (1111)
 
 
-pid_t pid;
+pid_t pid = -1;
 
 //static char *ASUE_ip_addr;
 static char *ASU_ip_addr;
@@ -284,30 +284,32 @@ void ProcessWAPIProtocol(int new_asue_socket)
 
 	//run ffmpeg
 	if(auth_result){
-		char abuf[INET_ADDRSTRLEN];
-		struct sockaddr_in asueaddr;
-		socklen_t length = sizeof(asueaddr);
-		getpeername(new_asue_socket, (struct sockaddr*) &asueaddr, &length);
-		inet_ntop(AF_INET, &asueaddr.sin_addr, abuf, INET_ADDRSTRLEN);
-		printf("\n");
-		char *ffmpeg_prog_dir="";//"/home/yaoyao/ffmpeg_sources/ffmpeg/";
-		char ffmpeg_cmd[256];
-		//snprintf(ffmpeg_cmd,255,"%sffmpeg -debug ts -i rtsp://%s:8557/PSIA/Streaming/channels/2?videoCodecType=H.264 -vcodec copy -an http://localhost:8090/feed1.ffm",ffmpeg_prog_dir, abuf);
-		snprintf(ffmpeg_cmd, 255,
-		"%sffmpeg -debug ts -i rtsp://192.168.115.40:8557/PSIA/Streaming/channels/2?videoCodecType=H.264 -vcodec copy -an http://localhost:8090/feed1.ffm >/dev/null 2>/dev/null",
-		ffmpeg_prog_dir);
-		
-		printf(ffmpeg_cmd);
-		printf("\n");
+		if(pid < 0){
+			char abuf[INET_ADDRSTRLEN];
+			struct sockaddr_in asueaddr;
+			socklen_t length = sizeof(asueaddr);
+			getpeername(new_asue_socket, (struct sockaddr*) &asueaddr, &length);
+			inet_ntop(AF_INET, &asueaddr.sin_addr, abuf, INET_ADDRSTRLEN);
+			printf("\n");
+			char *ffmpeg_prog_dir="";//"/home/yaoyao/ffmpeg_sources/ffmpeg/";
+			char ffmpeg_cmd[256];
+			//snprintf(ffmpeg_cmd,255,"%sffmpeg -debug ts -i rtsp://%s:8557/PSIA/Streaming/channels/2?videoCodecType=H.264 -vcodec copy -an http://localhost:8090/feed1.ffm",ffmpeg_prog_dir, abuf);
+			snprintf(ffmpeg_cmd, 255,
+			"%sffmpeg -debug ts -i rtsp://192.168.115.40:8557/PSIA/Streaming/channels/2?videoCodecType=H.264 -vcodec copy -an http://localhost:8090/feed1.ffm >/dev/null 2>/dev/null",
+			ffmpeg_prog_dir);
+			
+			printf(ffmpeg_cmd);
+			printf("\n");
 
-		if((pid = fork()) < 0){
-			perror("fork()");
-		}else if(pid == 0){
-			if(execl("/bin/sh", "sh", "-c", ffmpeg_cmd, (char *)0) < 0){
-				perror("execl failed");
-			}
-			pid++;
-		}else{}
+			if((pid = fork()) < 0){
+				perror("fork()");
+			}else if(pid == 0){
+				if(execl("/bin/sh", "sh", "-c", ffmpeg_cmd, (char *)0) < 0){
+					perror("execl failed");
+				}
+				pid++;
+			}else{}
+		}
 	}
 	else{
 		//int status;
@@ -318,6 +320,8 @@ void ProcessWAPIProtocol(int new_asue_socket)
 		printf("kill %d\n",pid);
 		kill(pid,SIGABRT);
 		wait(NULL);
+		
+		pid = -1;
 	}
 
 }
