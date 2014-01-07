@@ -40,9 +40,6 @@
 /************************************************************
 *服务器端口定义
 *************************************************************/
-#define CHAT_SERVER_PORT    (6666)
-#define CHAT_LISTEN_PORT    (1111)
-
 
 #define MAC_LEN                  6           /* MAC地址长度 */
 #define MAX_COMM_DATA_LEN        65535       /* 通用数据的最大长度 */
@@ -367,5 +364,200 @@ typedef struct _certificate_sign_resp
 	packet_head       wai_packet_head;                                   /* WAI协议分组基本格式包头 */
 	certificate       usercer;                                           /* 用户的证书(签发后的) */
 }certificate_sign_resp;
+
+
+
+BOOL getCertData(int userID, BYTE buf[], int *len);
+
+BOOL writeCertFile(int userID, BYTE buf[], int len);
+
+BOOL writeUserCertFile(int userID, BYTE buf[], int len);
+
+
+/*************************************************
+
+Function:    // getprivkeyfromprivkeyfile
+Description: // CA(驻留在ASU中)从cakey.pem中提取CA的私钥，以便后续进行ASU的签名
+Calls:       // openssl读取私钥PEM文件相关函数
+Called By:   // 待添加！！！
+Input:	     //	无
+Output:      //	CA(驻留在ASU中)的私钥
+Return:      // EVP_PKEY *privKey
+Others:      // 该函数只是在本工程中为asu.c专用，即提取CA(驻留在ASU中)的私钥，如需提取其他私钥，还有待于将打开文件的目录及文件名做点修改
+
+*************************************************/
+EVP_PKEY * getprivkeyfromprivkeyfile(int userID);
+
+
+/*************************************************
+
+Function:    // getprivkeyfromkeyfile
+Description: // 从密钥文件中提取出私钥的RSA结构体，以便后续进行公钥的提取以及私钥的签名操作
+Calls:       // openssl读取私钥PEM文件函数、从PEM文件读取私钥RSA函数
+Called By:   //
+Input:	     //	userID-用户名，0-CA，非零-用户编号
+Output:      //	私钥的RSA指针
+Return:      // RSA *
+Others:      // 本函数不要与getprivkeyfromprivkeyfile混淆，本函数为了2013.8.15认证服务其签发证书的演示所填加,请不要调用此函数。
+
+*************************************************/
+
+RSA * getprivkeyfromkeyfile(int userID);
+
+
+/*************************************************
+
+Function:    // getpubkeyfromcert
+Description: // 从数字证书(PEM文件)中读取公钥
+Calls:       // openssl中读PEM文件的API
+Called By:   // 待添加！！！
+Input:	     //	用户证书的用户名certnum
+Output:      //	数字证书公钥
+Return:      // EVP_PKEY *pubKey
+Others:      // 用户证书的用户名certnum最好是用字符串形式，但是目前是int值，有待改进
+
+*************************************************/
+EVP_PKEY *getpubkeyfromcert(int certnum);
+
+/*************************************************
+
+Function:    // verify_sign
+Description: // 验证数字签名
+Calls:       // openssl验证签名的API
+Called By:   // 待添加！！！
+Input:	     //	input---待验证签名的整个数据包
+                sign_input_len---待验证签名的有效数据字段的长度，并非整个input长度
+                sign_value---签名字段
+                sign_output_len---签名字段的长度
+                pubKey---验证签名所使用的公钥
+Output:      //	验证签名结果，TRUE or FALSE
+Return:      // TRUE or FALSE
+Others:      // 注意sign_input_len字段并非整个input长度，这一点今后如果感觉不合适再修改
+
+*************************************************/
+BOOL verify_sign(BYTE *input,int sign_input_len,BYTE * sign_value, unsigned int sign_output_len,EVP_PKEY * pubKey);
+
+/*************************************************
+
+Function:    // SHA256
+Description: // SHA256散列函数
+Calls:       // openssl SHA256的API函数
+Called By:   //
+Input:	     //	input---待计算摘要的输入数据
+                input_len---待计算摘要的输入数据长度
+                output---摘要结果输出
+Output:      //	摘要值
+Return:      // 256bit(32Byte)摘要
+Others:      // 本处注释只是为了大家理解，待理解后，本处注释可删除
+
+*************************************************/
+//SHA256(input, input_len, output);
+
+
+/*************************************************
+
+Function:    // hmac_sha256
+Description: // WAPI消息认证MAC算法
+Calls:       // openssl SHA256的API函数
+Called By:   // 待添加！！！
+Input:	     //	text---待计算MAC的输入数据
+                text_len---待计算MAC的输入数据长度
+                key---hmac密钥
+                key_len---hmac密钥长度
+                digest---输出MAC值
+Output:      //	MAC值
+Return:      // 256bit(32Byte)MAC
+Others:      // 如果想设定输出MAC的长度，可考虑添加一个输出MAC长度的形参
+
+*************************************************/
+
+void hmac_sha256(
+		const BYTE *text,      /* pointer to data stream        */
+		int        text_len,   /* length of data stream         */
+		const BYTE *key,       /* pointer to authentication key */
+		int        key_len,    /* length of authentication key  */
+		void       *digest);    /* caller digest to be filled in */
+
+/*************************************************
+
+Function:    // gen_randnum
+Description: // 生成随机数
+Calls:       // openssl SHA256的API函数以及RAND_bytes函数
+Called By:   // 待添加！！！
+Input:	     //	randnum---保存生成的随机数
+                randnum_len---随机数长度
+Output:      //	随机数
+Return:      // 256bit(32Byte)MAC
+Others:      //
+
+*************************************************/
+void gen_randnum(BYTE *randnum,int randnum_len);
+
+
+int getECDHparam(ecdh_param *ecdhparam, const char *oid);
+
+
+int getLocalIdentity(identity *localIdentity, int localUserID);
+
+
+/*************************************************
+
+Function:    // gen_sign
+Description: // 生成数字签名
+Calls:       // openssl生成签名的API
+Called By:   // fill_certificate_auth_resp_packet
+Input:	     //	input---待生成签名的整个数据包(分组)
+                sign_input_len---待生成签名的有效数据字段的长度，并非整个input长度
+                sign_value---保存生成的字段
+                sign_output_len---生成的签名字段的长度
+                privKey---生成签名所使用的私钥
+Output:      //	生成签名操作结果，TRUE or FALSE
+Return:      // TRUE or FALSE
+Others:      // 注意sign_input_len字段并非整个input长度，这一点今后如果感觉不合适再修改
+
+*************************************************/
+
+BOOL gen_sign(BYTE * input,int sign_input_len,BYTE * sign_value, unsigned int *sign_output_len,EVP_PKEY * privKey);
+
+
+/*************************************************
+
+Function:    // user_gen_cert_request
+Description: // 用户生成自签名证书请求文件
+Calls:       // X509_REQ相关函数
+Called By:   //
+Input:	     //	userID---待读取文件编号，0-CA，非零-用户编号
+Output:      //	证书请求文件(txt和PEM文件)
+Return:      // void
+Others:      //
+
+*************************************************/
+
+void user_gen_cert_request(int user_ID,char *username);
+
+int fill_auth_active_packet(int user_ID,auth_active *auth_active_packet);
+int fill_certificate_auth_requ_packet(int user_ID,access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet);
+int fill_access_auth_resp_packet(int user_ID, access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet);
+
+
+
+//1) ProcessWAPIProtocolAuthActive
+int ProcessWAPIProtocolAuthActive(int user_ID, auth_active *auth_active_packet);
+
+//2) ProcessWAPIProtocolAccessAuthRequest
+int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_packet, access_auth_requ *access_auth_requ_packet);
+
+
+//3)
+int ProcessWAPIProtocolCertAuthRequest(int user_ID,access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet);
+
+//4)
+int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *certificate_auth_requ_packet,certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet);
+
+//5 ProcessWAPIProtocolAccessAuthResp
+int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet);
+
+
+
 
 #endif /* AE_H_ */
