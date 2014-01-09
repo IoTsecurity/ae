@@ -86,9 +86,9 @@
 typedef unsigned char  BYTE;
 typedef unsigned short WORD;
 typedef unsigned long  DWORD;
+typedef unsigned short BOOL;
 
 //宏定义布尔类型
-#define BOOL int
 #define TRUE 1
 #define FALSE 0
 
@@ -536,28 +536,35 @@ Others:      //
 void user_gen_cert_request(int user_ID,char *username);
 
 int fill_auth_active_packet(int user_ID,auth_active *auth_active_packet);
-int fill_certificate_auth_requ_packet(int user_ID,access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet);
-int fill_access_auth_resp_packet(int user_ID, access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet);
+int fill_certificate_auth_requ_packet(int user_ID,const access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet);
+int fill_access_auth_resp_packet(int user_ID, const access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet);
 
 
-
-//1) ProcessWAPIProtocolAuthActive
+/* Authentication */
+// 1) Process AuthActive packet
 int ProcessWAPIProtocolAuthActive(int user_ID, auth_active *auth_active_packet);
 
-//2) ProcessWAPIProtocolAccessAuthRequest
-int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_packet, access_auth_requ *access_auth_requ_packet);
+// 2) Handle AccessAuthRequest packet
+int HandleWAPIProtocolAccessAuthRequest(int user_ID, const auth_active *auth_active_packet, access_auth_requ *access_auth_requ_packet);
 
+// 3) Process CertAuthRequest packet
+int ProcessWAPIProtocolCertAuthRequest(int user_ID,const access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet);
 
-//3)
-int ProcessWAPIProtocolCertAuthRequest(int user_ID,access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet);
+// 4) HandleProcess CertAuthResp packet
+int HandleProcessWAPIProtocolCertAuthResp(int user_ID, const certificate_auth_requ *certificate_auth_requ_packet, const certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet);
 
-//4)
-int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *certificate_auth_requ_packet,certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet);
+// 5) Process AccessAuthResp packet
+int ProcessWAPIProtocolAccessAuthResp(int user_ID, const access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet);
 
-//5 ProcessWAPIProtocolAccessAuthResp
-int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet);
+/* Key negotiation */
+/*
+// 1) Process Unicast key negotiation request packet
+int ProcessUnicastKeyNegoRequest(unicast_key_nego_requ *unicast_key_nego_requ_packet);
 
+// 2) Handle Unicast key negotiation response packet
+int HandleUnicastKeyNegoResponse(const unicast_key_nego_resp *unicast_key_nego_resp_packet);
 
-
-
+// 3) Process Unicast key negotiation confirm packet
+int ProcessUnicastKeyNegoConfirm(unicast_key_nego_confirm *unicast_key_nego_confirm_packet);
+*/
 #endif /* AE_H_ */

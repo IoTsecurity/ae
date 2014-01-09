@@ -4,13 +4,16 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../src/ae.c ../src/ae_interfaces.c 
+../src/ae.c \
+../src/ae_interfaces.c 
 
 OBJS += \
-./src/ae.o ./src/ae_interfaces.o 
+./src/ae.o \
+./src/ae_interfaces.o 
 
 C_DEPS += \
-./src/ae.d 
+./src/ae.d \
+./src/ae_interfaces.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

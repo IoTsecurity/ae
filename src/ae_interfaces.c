@@ -708,22 +708,8 @@ void user_gen_cert_request(int user_ID,char *username)
 	}
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//1) ProcessWAPIProtocolAuthActive
+/* Authentication */
+//1) Process AuthActive packet
 int fill_auth_active_packet(int user_ID,auth_active *auth_active_packet)
 {
 	//fill WAI packet head
@@ -825,100 +811,8 @@ int ProcessWAPIProtocolAuthActive(int user_ID, auth_active *auth_active_packet)
 	
 }
 
-//2) ProcessWAPIProtocolAccessAuthRequest
-/*
-int fill_access_auth_requ_packet(int user_ID,access_auth_requ *access_auth_requ_packet)
-{
-	//fill WAI packet head
-	access_auth_requ_packet->wai_packet_head.version = 1;
-	access_auth_requ_packet->wai_packet_head.type = 1;
-	access_auth_requ_packet->wai_packet_head.subtype = AUTH_ACTIVE;
-	access_auth_requ_packet->wai_packet_head.reserved = 0;
-	access_auth_requ_packet->wai_packet_head.packetnumber = 2;
-	access_auth_requ_packet->wai_packet_head.fragmentnumber = 0;
-	access_auth_requ_packet->wai_packet_head.identify = 0;
-
-	//fill flag
-	access_auth_requ_packet->flag = 0x04;
-
-	//fill auth identify
-	memset((BYTE *)&access_auth_requ_packet->authidentify, 0, sizeof(access_auth_requ_packet->authidentify));
-
-	//fill asue rand number
-	memset((BYTE *)&access_auth_requ_packet->asuechallenge, 0, sizeof(access_auth_requ_packet->aechallenge));
-
-	//fill asue cipher data
-	memset((BYTE *)&access_auth_requ_packet->asuekeydata, 0, sizeof(access_auth_requ_packet->asuekeydata));
-
-	//fill ae rand number
-	memset((BYTE *)&access_auth_requ_packet->aechallenge, 0, sizeof(access_auth_requ_packet->aechallenge));
-
-	
-	//fill local ae identity
-	getLocalIdentity(&access_auth_requ_packet->staaeidentity, user_ID);
-
-	//fill ecdh param
-	const  char  oid[]={"1.2.156.11235.1.1.2.1"}; 
-	getECDHparam(&access_auth_requ_packet->ecdhparam, oid);
-
-	//fill asue certificate
-	access_auth_requ_packet->certificatestaasue.cer_identify = 1; //X.509 cert
-	
-	BYTE cert_buffer[5000];
-	int cert_len = 0;
-
-	if (!getCertData(user_ID, cert_buffer, &cert_len))	  //先读取ASUE证书，"demoCA/newcerts/usercert2.pem"
-	{
-		printf("将证书保存到缓存buffer失败!");
-		return FALSE;
-	}
-	
-	access_auth_requ_packet->certificatestaasue.cer_length = cert_len;   //证书长度字段
-	memcpy((access_auth_requ_packet->certificatestaasue.cer_X509),(BYTE*)cert_buffer,strlen((char*)cert_buffer));
-
-
-	//fill packet length
-	access_auth_requ_packet->wai_packet_head.length = sizeof(access_auth_requ);	
-
-
-	//fill asue signature
-	//AE\u4f7f\u7528AE\u7684\u79c1\u94a5(userkey2.pem)\u6765\u751f\u6210AE\u7b7e\u540d
-	EVP_PKEY * privKey;
-	BYTE sign_value[1024];					//保存签名值的数组
-	unsigned int  sign_len;
-
-	privKey = getprivkeyfromprivkeyfile(user_ID);
-	if(privKey == NULL)
-	{
-		printf("getprivkeyitsself().....failed!\n");
-		return FALSE;
-	}
-
-	if(!gen_sign((BYTE *)access_auth_requ_packet,(access_auth_requ_packet->wai_packet_head.length-sizeof(access_auth_requ_packet->asuesign)),sign_value, &sign_len,privKey))
-	{
-		printf("generate signature failed.\n");
-		return FALSE;
-	}
-
-	access_auth_requ_packet->asuesign.sign.length = sign_len;
-	memcpy(access_auth_requ_packet->asuesign.sign.data,sign_value,sign_len);
-
-	return TRUE;	
-	
-}
-
-int ProcessWAPIProtocolAccessAuthRequest(int user_ID, access_auth_requ *access_auth_requ_packet)
-{
-	
-	memset((BYTE *)access_auth_requ_packet, 0, sizeof(access_auth_requ));
-	if (!fill_access_auth_requ_packet(user_ID, access_auth_requ_packet)){
-		printf("fill access auth request packet failed!\n");
-	}
-
-	return TRUE;
-}
-*/
-int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_packet, access_auth_requ *access_auth_requ_packet)
+//2) Handle AccessAuthRequest packet
+int HandleWAPIProtocolAccessAuthRequest(int user_ID, const auth_active *auth_active_packet, access_auth_requ *access_auth_requ_packet)
 {
 	
 	//write asue cert into cert file
@@ -934,7 +828,7 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 	EVP_PKEY *asuepubKey = NULL;
 	BYTE *pTmp = NULL;
 	BYTE derasuepubkey[1024];
-	int asuepubkeyLen, i;
+	int asuepubkeyLen;
 	asuepubKey = getpubkeyfromcert(asue_ID);
 	if(asuepubKey == NULL){
 		printf("get asue's public key failed.\n");
@@ -1004,12 +898,8 @@ int HandleWAPIProtocolAccessAuthRequest(int user_ID, auth_active *auth_active_pa
 	return TRUE;
 }
 
-
-
-
-//3)
-
-int fill_certificate_auth_requ_packet(int user_ID,access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet)
+//3) Process CertAuthRequest packet
+int fill_certificate_auth_requ_packet(int user_ID,const access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet)
 {
 	//fill WAI packet head
 	certificate_auth_requ_packet->wai_packet_head.version = 1;
@@ -1076,7 +966,7 @@ int fill_certificate_auth_requ_packet(int user_ID,access_auth_requ *access_auth_
 }
 
 
-int ProcessWAPIProtocolCertAuthRequest(int user_ID,access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet)
+int ProcessWAPIProtocolCertAuthRequest(int user_ID, const access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet)
 {
 	memset((BYTE *)certificate_auth_requ_packet, 0, sizeof(certificate_auth_requ));
 	if (!fill_certificate_auth_requ_packet(user_ID,access_auth_requ_packet,certificate_auth_requ_packet))
@@ -1089,9 +979,8 @@ int ProcessWAPIProtocolCertAuthRequest(int user_ID,access_auth_requ *access_auth
 }
 
 
-//4)
-
-int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *certificate_auth_requ_packet,certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet)
+//4) HandleProcess CertAuthResp packet
+int HandleProcessWAPIProtocolCertAuthResp(int user_ID, const certificate_auth_requ *certificate_auth_requ_packet,const certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet)
 {
 	memset((BYTE *)access_auth_resp_packet, 0, sizeof(access_auth_resp));
 
@@ -1099,7 +988,7 @@ int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *ce
 	EVP_PKEY *asupubKey = NULL;
 	BYTE *pTmp = NULL;
 	BYTE derasupubkey[1024];
-	int asupubkeyLen, i;
+	int asupubkeyLen;
 	asupubKey = getpubkeyfromcert(0);
 	if(asupubKey == NULL){
 		printf("get asu's public key failed.\n");
@@ -1168,23 +1057,8 @@ int HandleProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *ce
 
 }
 
-/*
-int ProcessWAPIProtocolCertAuthResp(int user_ID, certificate_auth_requ *certificate_auth_requ_packet,certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet)//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
-{
-	//memset((BYTE *)access_auth_resp_packet, 0, sizeof(access_auth_resp));
-	if (!HandleProcessWAPIProtocolCertAuthResp(user_ID,certificate_auth_requ_packet,certificate_auth_resp_packet,access_auth_resp_packet))
-	{
-		printf("handle certificate auth resp packet failed!\n");
-		return FALSE;
-	}
-	else
-		printf("网络硬盘录像机解析证书认证响应分组成功！\n");
-
-	return TRUE;
-}
-*/
-//5 ProcessWAPIProtocolAccessAuthResp
-int fill_access_auth_resp_packet(int user_ID, access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet)
+//5 Process AccessAuthResp packet
+int fill_access_auth_resp_packet(int user_ID, const access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet)
 {
 	
 	//fill WAI packet head
@@ -1270,7 +1144,7 @@ int fill_access_auth_resp_packet(int user_ID, access_auth_requ *access_auth_requ
 }
 
 
-int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet)
+int ProcessWAPIProtocolAccessAuthResp(int user_ID, const access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet)
 {
 	if (!fill_access_auth_resp_packet(user_ID, access_auth_requ_packet, access_auth_resp_packet)){
 		printf("fill access auth responce packet failed!\n");
@@ -1281,3 +1155,14 @@ int ProcessWAPIProtocolAccessAuthResp(int user_ID, access_auth_requ *access_auth
 	return TRUE;
 }
 
+/* Key negotiation */
+/*
+// 1) Process Unicast key negotiation request packet
+int ProcessUnicastKeyNegoRequest(unicast_key_nego_requ *unicast_key_nego_requ_packet);
+
+// 2) Handle Unicast key negotiation response packet
+int HandleUnicastKeyNegoResponse(const unicast_key_nego_resp *unicast_key_nego_resp_packet);
+
+// 3) Process Unicast key negotiation confirm packet
+int ProcessUnicastKeyNegoConfirm(unicast_key_nego_confirm *unicast_key_nego_confirm_packet);
+*/
