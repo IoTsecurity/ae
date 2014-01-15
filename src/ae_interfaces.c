@@ -16,7 +16,7 @@ const char *CAID = "0";
 #define CHK_ERR(err,s) if ((err)==-1) { perror(s); exit(1); }
 #define CHK_SSL(err) if ((err)==-1) { ERR_print_errors_fp(stderr); exit(2); }
 
-static int annotation = 1;  //1-lvshichao,2-yaoyao
+static int annotation = 2;  //1-lvshichao,2-yaoyao
 
 BOOL getCertData(char *userID, BYTE buf[], int *len)
 {
@@ -739,7 +739,7 @@ int fill_auth_active_packet(char *userID,auth_active *auth_active_packet)
 	//fill local ASU identity
 	if(annotation == 2)
 		printf("fill local ASU identity:\n");
-	int asu_ID = 0;
+	char *asu_ID = "0";
 	getLocalIdentity(&auth_active_packet->localasuidentity, asu_ID);
 
 	//fill ecdh param
@@ -982,12 +982,13 @@ int HandleProcessWAPIProtocolCertAuthResp(char *userID, const certificate_auth_r
 {
 	memset((BYTE *)access_auth_resp_packet, 0, sizeof(access_auth_resp));
 
+
 	//读取CA(驻留在ASU)中的公钥证书获取CA公钥
 	EVP_PKEY *asupubKey = NULL;
 	BYTE *pTmp = NULL;
 	BYTE derasupubkey[1024];
 	int asupubkeyLen;
-	asupubKey = getpubkeyfromcert(0);
+	asupubKey = getpubkeyfromcert("0");
 	if(asupubKey == NULL){
 		printf("get asu's public key failed.\n");
 		return FALSE;
@@ -1006,8 +1007,6 @@ int HandleProcessWAPIProtocolCertAuthResp(char *userID, const certificate_auth_r
 		printf("验证ASU服务器对整个证书认证响应分组(除本字段外)的签名正确！！！......\n");
 		EVP_PKEY_free(asupubKey);
 	}
-
-
 
 //	//验证ASU服务器对证书验证结果字段的签名
 //	if (verify_sign((BYTE *) &(certificate_auth_resp_packet->cervalidresult),

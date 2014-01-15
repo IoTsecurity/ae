@@ -19,7 +19,7 @@ pid_t pid = -1;
 static char *ASU_ip_addr;
 
 
-static int annotation = 1;  //1-lvshichao,2-yaoyao
+static int annotation = 2;  //1-lvshichao,2-yaoyao
 
 typedef struct user
 {
