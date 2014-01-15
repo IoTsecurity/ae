@@ -7,7 +7,7 @@
  Description : Hello World in C, Ansi-style
  ============================================================================
  */
-#include "ae.h"
+#include "ae_interfaces.h"
 
 #define CHAT_SERVER_PORT    (6666)
 #define CHAT_LISTEN_PORT    (1111)
@@ -180,7 +180,7 @@ int recv_from_peer(int new_server_socket, BYTE *recv_buffer, int recv_len)
 
 void ProcessWAPIProtocol(int new_asue_socket)
 {
-	int user_ID = 2;
+	char *userID = "2";
 	int asu_socket;
 	int auth_result=FALSE;
 
@@ -205,7 +205,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	eap_auth_active_packet.eap_header.length=sizeof(eap_auth_active_packet);
 	eap_auth_active_packet.eap_header.type=192;
 
-	ProcessWAPIProtocolAuthActive(user_ID, &eap_auth_active_packet.auth_active_packet);
+	ProcessWAPIProtocolAuthActive(userID, &eap_auth_active_packet.auth_active_packet);
 	send_to_peer(new_asue_socket, (BYTE *)&eap_auth_active_packet, sizeof(eap_auth_active_packet));
 
 	//2) ProcessWAPIProtocolAccessAuthRequest, recv from asue
@@ -219,7 +219,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	memset((BYTE *)&eap_access_auth_requ_packet, 0, sizeof(EAP_access_auth_requ));
 	recv_from_peer(new_asue_socket, (BYTE *)&eap_access_auth_requ_packet, sizeof(eap_access_auth_requ_packet));
 	//verify access_auth_requ_packet
-	HandleWAPIProtocolAccessAuthRequest(user_ID, &eap_auth_active_packet.auth_active_packet, &eap_access_auth_requ_packet.access_auth_requ_packet);
+	HandleWAPIProtocolAccessAuthRequest(userID, &eap_auth_active_packet.auth_active_packet, &eap_access_auth_requ_packet.access_auth_requ_packet);
 
 	//3) ProcessWAPIProtocolCertAuthRequest, send to asu
 	if (annotation == 1)
@@ -244,7 +244,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	eap_certificate_auth_requ_packet.eap_header.type=192;//New code
 	
 
-	ProcessWAPIProtocolCertAuthRequest(user_ID, &eap_access_auth_requ_packet.access_auth_requ_packet,&eap_certificate_auth_requ_packet.certificate_auth_requ_packet);
+	ProcessWAPIProtocolCertAuthRequest(userID, &eap_access_auth_requ_packet.access_auth_requ_packet,&eap_certificate_auth_requ_packet.certificate_auth_requ_packet);
 	send_to_peer(asu_socket,(BYTE *)&eap_certificate_auth_requ_packet, sizeof(eap_certificate_auth_requ_packet));
 
 	//4) ProcessWAPIProtocolCertAuthResp, recv from asu
@@ -260,7 +260,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	memset((BYTE *)&eap_access_auth_resp_packet, 0, sizeof(eap_access_auth_resp_packet));
 
 	//该函数的主要工作是查看证书验证结果，并填充接入认证响应分组
-	auth_result = HandleProcessWAPIProtocolCertAuthResp(user_ID,&eap_certificate_auth_requ_packet.certificate_auth_requ_packet, &eap_certificate_auth_resp_packet.certificate_auth_resp_packet,&eap_access_auth_resp_packet.access_auth_resp_packet);
+	auth_result = HandleProcessWAPIProtocolCertAuthResp(userID,&eap_certificate_auth_requ_packet.certificate_auth_requ_packet, &eap_certificate_auth_resp_packet.certificate_auth_resp_packet,&eap_access_auth_resp_packet.access_auth_resp_packet);
 
 	//5) ProcessWAPIProtocolAccessAuthResp, send to asue
 	if (annotation == 1)
@@ -277,7 +277,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	eap_access_auth_resp_packet.eap_header.length=sizeof(eap_auth_active_packet);
 	eap_access_auth_resp_packet.eap_header.type=192;
 
-	ProcessWAPIProtocolAccessAuthResp(user_ID, &eap_access_auth_requ_packet.access_auth_requ_packet, &eap_access_auth_resp_packet.access_auth_resp_packet);
+	ProcessWAPIProtocolAccessAuthResp(userID, &eap_access_auth_requ_packet.access_auth_requ_packet, &eap_access_auth_resp_packet.access_auth_resp_packet);
 	send_to_peer(new_asue_socket, (BYTE *)&eap_access_auth_resp_packet, sizeof(eap_access_auth_resp_packet));
 
 	// pid is global variable

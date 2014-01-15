@@ -1,5 +1,5 @@
 src/ae_interfaces.d src/ae_interfaces.o: ../src/ae_interfaces.c \
- ../src/ae.h /usr/local/openssl/include/openssl/crypto.h \
+ ../src/ae_interfaces.h /usr/local/openssl/include/openssl/crypto.h \
  /usr/local/openssl/include/openssl/e_os2.h \
  /usr/local/openssl/include/openssl/opensslconf.h \
  /usr/local/openssl/include/openssl/stack.h \
@@ -41,7 +41,7 @@ src/ae_interfaces.d src/ae_interfaces.o: ../src/ae_interfaces.c \
  /usr/local/openssl/include/openssl/err.h \
  /usr/local/openssl/include/openssl/rand.h
 
-../src/ae.h:
+../src/ae_interfaces.h:
 
 /usr/local/openssl/include/openssl/crypto.h:
 

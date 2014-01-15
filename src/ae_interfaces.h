@@ -367,11 +367,11 @@ typedef struct _certificate_sign_resp
 
 
 
-BOOL getCertData(int userID, BYTE buf[], int *len);
+BOOL getCertData(char *userID, BYTE buf[], int *len);
 
-BOOL writeCertFile(int userID, BYTE buf[], int len);
+BOOL writeCertFile(char *userID, BYTE buf[], int len);
 
-BOOL writeUserCertFile(int userID, BYTE buf[], int len);
+BOOL writeUserCertFile(char *userID, BYTE buf[], int len);
 
 
 /*************************************************
@@ -386,7 +386,7 @@ Return:      // EVP_PKEY *privKey
 Others:      // 该函数只是在本工程中为asu.c专用，即提取CA(驻留在ASU中)的私钥，如需提取其他私钥，还有待于将打开文件的目录及文件名做点修改
 
 *************************************************/
-EVP_PKEY * getprivkeyfromprivkeyfile(int userID);
+EVP_PKEY * getprivkeyfromprivkeyfile(char *userID);
 
 
 /*************************************************
@@ -402,7 +402,7 @@ Others:      // 本函数不要与getprivkeyfromprivkeyfile混淆，本函数为
 
 *************************************************/
 
-RSA * getprivkeyfromkeyfile(int userID);
+RSA * getprivkeyfromkeyfile(char *userID);
 
 
 /*************************************************
@@ -417,7 +417,7 @@ Return:      // EVP_PKEY *pubKey
 Others:      // 用户证书的用户名certnum最好是用字符串形式，但是目前是int值，有待改进
 
 *************************************************/
-EVP_PKEY *getpubkeyfromcert(int certnum);
+EVP_PKEY *getpubkeyfromcert(char *userID);
 
 /*************************************************
 
@@ -497,7 +497,7 @@ void gen_randnum(BYTE *randnum,int randnum_len);
 int getECDHparam(ecdh_param *ecdhparam, const char *oid);
 
 
-int getLocalIdentity(identity *localIdentity, int localUserID);
+int getLocalIdentity(identity *localIdentity, char *localUserID);
 
 
 /*************************************************
@@ -533,28 +533,28 @@ Others:      //
 
 *************************************************/
 
-void user_gen_cert_request(int user_ID,char *username);
+void user_gen_cert_request(char *userID,char *username);
 
-int fill_auth_active_packet(int user_ID,auth_active *auth_active_packet);
-int fill_certificate_auth_requ_packet(int user_ID,const access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet);
-int fill_access_auth_resp_packet(int user_ID, const access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet);
+int fill_auth_active_packet(char *userID,auth_active *auth_active_packet);
+int fill_certificate_auth_requ_packet(char *userID,const access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet);
+int fill_access_auth_resp_packet(char *userID, const access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet);
 
 
 /* Authentication */
 // 1) Process AuthActive packet
-int ProcessWAPIProtocolAuthActive(int user_ID, auth_active *auth_active_packet);
+int ProcessWAPIProtocolAuthActive(char *userID, auth_active *auth_active_packet);
 
 // 2) Handle AccessAuthRequest packet
-int HandleWAPIProtocolAccessAuthRequest(int user_ID, const auth_active *auth_active_packet, access_auth_requ *access_auth_requ_packet);
+int HandleWAPIProtocolAccessAuthRequest(char *userID, const auth_active *auth_active_packet, access_auth_requ *access_auth_requ_packet);
 
 // 3) Process CertAuthRequest packet
-int ProcessWAPIProtocolCertAuthRequest(int user_ID,const access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet);
+int ProcessWAPIProtocolCertAuthRequest(char *userID,const access_auth_requ *access_auth_requ_packet,certificate_auth_requ *certificate_auth_requ_packet);
 
 // 4) HandleProcess CertAuthResp packet
-int HandleProcessWAPIProtocolCertAuthResp(int user_ID, const certificate_auth_requ *certificate_auth_requ_packet, const certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet);
+int HandleProcessWAPIProtocolCertAuthResp(char *userID, const certificate_auth_requ *certificate_auth_requ_packet, const certificate_auth_resp *certificate_auth_resp_packet,access_auth_resp *access_auth_resp_packet);
 
 // 5) Process AccessAuthResp packet
-int ProcessWAPIProtocolAccessAuthResp(int user_ID, const access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet);
+int ProcessWAPIProtocolAccessAuthResp(char *userID, const access_auth_requ *access_auth_requ_packet, access_auth_resp *access_auth_resp_packet);
 
 /* Key negotiation */
 /*

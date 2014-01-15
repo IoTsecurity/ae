@@ -1,4 +1,4 @@
-src/ae.d src/ae.o: ../src/ae.c ../src/ae.h \
+src/ae.d src/ae.o: ../src/ae.c ../src/ae_interfaces.h \
  /usr/local/openssl/include/openssl/crypto.h \
  /usr/local/openssl/include/openssl/e_os2.h \
  /usr/local/openssl/include/openssl/opensslconf.h \
@@ -41,7 +41,7 @@ src/ae.d src/ae.o: ../src/ae.c ../src/ae.h \
  /usr/local/openssl/include/openssl/err.h \
  /usr/local/openssl/include/openssl/rand.h
 
-../src/ae.h:
+../src/ae_interfaces.h:
 
 /usr/local/openssl/include/openssl/crypto.h:
 
