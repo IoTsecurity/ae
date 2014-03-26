@@ -33,11 +33,11 @@ src/ae_interfaces.d src/ae_interfaces.o: ../src/ae_interfaces.c \
  /usr/local/openssl/include/openssl/kssl.h \
  /usr/local/openssl/include/openssl/ssl2.h \
  /usr/local/openssl/include/openssl/ssl3.h \
- /usr/local/openssl/include/openssl/pq_compat.h \
  /usr/local/openssl/include/openssl/tls1.h \
  /usr/local/openssl/include/openssl/dtls1.h \
  /usr/local/openssl/include/openssl/pqueue.h \
  /usr/local/openssl/include/openssl/ssl23.h \
+ /usr/local/openssl/include/openssl/srtp.h \
  /usr/local/openssl/include/openssl/err.h \
  /usr/local/openssl/include/openssl/rand.h
 
@@ -111,8 +111,6 @@ src/ae_interfaces.d src/ae_interfaces.o: ../src/ae_interfaces.c \
 
 /usr/local/openssl/include/openssl/ssl3.h:
 
-/usr/local/openssl/include/openssl/pq_compat.h:
-
 /usr/local/openssl/include/openssl/tls1.h:
 
 /usr/local/openssl/include/openssl/dtls1.h:
@@ -120,6 +118,8 @@ src/ae_interfaces.d src/ae_interfaces.o: ../src/ae_interfaces.c \
 /usr/local/openssl/include/openssl/pqueue.h:
 
 /usr/local/openssl/include/openssl/ssl23.h:
+
+/usr/local/openssl/include/openssl/srtp.h:
 
 /usr/local/openssl/include/openssl/err.h:
 

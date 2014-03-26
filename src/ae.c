@@ -8,6 +8,7 @@
  ============================================================================
  */
 #include "ae_interfaces.h"
+#include "logtest.h"
 
 #define CHAT_SERVER_PORT    (6666)
 #define CHAT_LISTEN_PORT    (1111)
@@ -191,14 +192,15 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	EAP_certificate_auth_requ eap_certificate_auth_requ_packet;//New code
 	EAP_certificate_auth_resp eap_certificate_auth_resp_packet;//New code
 	
+	Testmode = 1;
+	tick();
+
 	//1) ProcessWAPIProtocolAuthActive,send to asue
 	if(annotation == 1)
 		printf("\n***\n 1) 认证激活分组(网络硬盘录像机->摄像机): \n");
 	else if(annotation == 2)
 		printf("\n***\n 1) ProcessWAPIProtocolAuthActive: \n");
-	//stop for keyboard
-	//getchar();
-	
+
 	memset((BYTE *)&eap_auth_active_packet, 0, sizeof(eap_auth_active_packet));
 	eap_auth_active_packet.eap_header.code=1;
 	eap_auth_active_packet.eap_header.identifier=0;
@@ -280,6 +282,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 	ProcessWAPIProtocolAccessAuthResp(userID, &eap_access_auth_requ_packet.access_auth_requ_packet, &eap_access_auth_resp_packet.access_auth_resp_packet);
 	send_to_peer(new_asue_socket, (BYTE *)&eap_access_auth_resp_packet, sizeof(eap_access_auth_resp_packet));
 
+	tock();
 	// pid is global variable
 
 	//run ffmpeg
