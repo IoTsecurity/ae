@@ -301,7 +301,7 @@ void ProcessWAPIProtocol(int new_asue_socket)
 			"%sffmpeg -debug ts -i rtsp://192.168.115.40:8557/PSIA/Streaming/channels/2?videoCodecType=H.264 -vcodec copy -an http://localhost:8090/feed1.ffm >/dev/null 2>/dev/null",
 			ffmpeg_prog_dir);
 			
-			printf(ffmpeg_cmd);
+			printf("%s", ffmpeg_cmd);
 			printf("\n");
 
 			if((pid = fork()) < 0){
